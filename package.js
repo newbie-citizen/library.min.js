@@ -118,9 +118,11 @@ Define.property (String, "integer", function () { return parseInt (this); });
 Define.property (String, "float", function () { return parseFloat (this); });
 Define.property (String, "small", function () { return this.toLowerCase (); });
 Define.property (String, "big", function () { return this.toUpperCase (); });
+Define.property (String, "begin", function (input) { if (typeof input === "string") return this.startsWith (input); else return this.substr (input); });
+Define.property (String, "end", function (input) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
 Define.property (String, "reverse", function () { return this.split ("").reverse ().join (""); });
 Define.property (String, "json", function () { return JSON.stringify (this); });
-Define.property (String, "to_split", function (separator, offset = 3) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
+Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
 Define.property (String, "to_replace", function (key, value) { if (typeof key === "object") { var data = this.concat (""); for (var i in key) { if (value) if (value.exclude) if (value.exclude.includes (i)) continue; else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); } return data; } else return this.split (key).join (value); });
 Define.property (String, "print_format", function (... format) { var data = this.split ("%s"); var index = - 1; for (var i in format) { index += 2; data.splice (index, 0, format [i]); } return data.join (""); });
 Define.property (String, "descriptor", "function");
@@ -143,7 +145,7 @@ Define (Number, "one", 1);
 Define (Number, "char", "0123456789");
 Define (Number, "random", function (number) { return Math.floor (Math.random () * (number + 1)); });
 Define (Number, "byte", function () {});
-Define (Number.byte, "parse", function (number, option = {}) { if (option.decimal) { option.decimal.length = option.decimal.length || 3; option.decimal.separator = option.decimal.separator || Number.float.separator; } else { option.decimal = {length: 3, separator: Number.float.separator} } option.separator = option.separator || Number.separator; var unit_of, unit = {log: Number.byte.unit.log.clone ().reverse (), name: Number.byte.unit.name.clone ().reverse ()}, size = 0; for (var i in unit.log) if ((size = number / Number [unit.log [i]] ()) >= 1) if (unit_of = unit.log [i]) break; var split = size.toString ().split (Number.float.separator); var integer = split [0], decimal = (split [1] || "").substr (0, option.decimal.length); var size_of = [integer.reverse ().to_split (option.separator).reverse ()]; if (decimal) size_of.push (option.decimal.separator, decimal); size_of = size_of.join ("") + " " + unit_of; return {size, size_of, integer, decimal, unit: {log: unit_of, name: unit.name [i]}} });
+Define (Number.byte, "parse", function (number, option = {}) { if (option.decimal) { option.decimal.length = option.decimal.length || 3; option.decimal.separator = option.decimal.separator || Number.float.separator; } else { option.decimal = {length: 3, separator: Number.float.separator} } option.separator = option.separator || Number.separator; option.thousand = option.thousand || 3; var unit_of, unit = {log: Number.byte.unit.log.clone ().reverse (), name: Number.byte.unit.name.clone ().reverse ()}, size = 0; for (var i in unit.log) if ((size = number / Number [unit.log [i]] ()) >= 1) if (unit_of = unit.log [i]) break; var split = size.toString ().split (Number.float.separator); var integer = split [0], decimal = (split [1] || "").substr (0, option.decimal.length); var size_of = [integer.reverse ().to_split (option.separator, option.thousand).reverse ()]; if (decimal) size_of.push (option.decimal.separator, decimal); size_of = size_of.join ("") + " " + unit_of; return {size, size_of, integer, decimal, unit: {log: unit_of, name: unit.name [i]}} });
 Define (Number.byte, "unit", {log: ["B", "KB", "MB", "GB", "TB"], name: ["Byte", "KiloByte", "MegaByte", "GigaByte", "TeraByte"], "B": "Byte", "KB": "KiloByte", "MB": "MegaByte", "GB": "GigaByte", "TB": "TeraByte"});
 Define (Number, "B", function (number = 1) { return number; });
 Define (Number, "KB", function (number = 1) { return number * (1024); });
@@ -257,6 +259,7 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 			reference: parse.href,
 			protocol: parse.protocol.substr (0, parse.protocol.length - 1) || option.protocol,
 			host: {reference: "", address: parse.host, name: parse.hostname, port: parse.port},
+			domain: URL.domain.parse (parse.hostname),
 			user: parse.username, password: parse.password,
 			path: parse.pathname || "/",
 			query: {},
@@ -267,6 +270,7 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 			parse_url.client = {}
 			parse_url.cross = {origin: false}
 			}
+		parse_url.base = {name: parse_url.domain.name || parse_url.host.name}
 		if (parse.origin !== "null") parse_url.host.reference = parse.origin;
 		if (parse.search) for (var [key, value] of parse.searchParams.entries ()) parse_url.query [key] = value;
 		if (option.client) if (parse_url.client = URL.parse_url (option.client, {c: true})) parse_url.cross.origin = true;
@@ -281,6 +285,33 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 Define (URL.parse_url, "header", function () {});
 Define (URL.parse_url.header, "data", {}, {writable: true});
 Define (URL.parse_url.header, "insert", function (key, value) { return URL.parse_url.header.data [key] = value; });
+
+Define (URL, "domain", function (data) {
+	if (data) URL.domain.data = URL.domain.sort (data);
+	});
+
+Define (URL.domain, "parse", function (host) {
+	for (var i in URL.domain.data) {
+		if (host.endsWith (URL.domain.data [i])) {
+			var n = host.substr (0, (host.length - URL.domain.data [i].length));
+			var name = n.split (".").end ();
+			var sub = n.substr (0, (n.length - (name.length + 1)));
+			var extension = URL.domain.data [i];
+			return {name: name.concat (extension), base: {name}, extension, sub, reference: sub.split (".").reverse ().join (".")}
+			break;
+			}
+		}
+	return {name: "", extension: "", sub: "", reference: ""}
+	});
+
+Define (URL.domain, "sort", function (domain) {
+	var tld = [], sub = [];
+	for (var i in domain) if (domain [i].split (".").length > 2) sub.push (domain [i]);
+	else tld.push (domain [i]);
+	return [... sub, ... tld];
+	});
+
+Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", ".xxx"]), {writable: true});
 
 /**
  * hash
@@ -367,6 +398,69 @@ Define (Function, "plugin", function () {});
 
 Define (Function, "api", function () {});
 
+Function.api.appwrite = class {
+	constructor (config) {
+		if (config) {
+			this.config = config;
+			this.start ();
+			}
+		}
+	start (config) {
+		if (config) this.config = config;
+		this.url = this.config.url;
+		this.socket = this.config.socket;
+		this.project = {id: this.config.project}
+		this ["data:base"] = this.config.db;
+		this.client = new Function.api.appwrite.__client ().setEndpoint (this.url).setEndpointRealtime (this.socket).setProject (this.project.id);
+		this.db = new Function.api.appwrite.database (this, this ["data:base"]);
+		}
+	database (db) {
+		return new Function.api.appwrite.database (this, db);
+		}
+	}
+
+Function.api.appwrite.database = class {
+	constructor (appwrite, db) {
+		this.appwrite = appwrite;
+		this.client = new Function.api.appwrite.__databases (this.appwrite.client);
+		this.name = db;
+		this.snapshot = [];
+		}
+	collection (collection) {
+		return new Function.api.appwrite.database.collection (this.appwrite, this, collection);
+		}
+	}
+
+Function.api.appwrite.database.collection = class {
+	constructor (appwrite, db, collection) {
+		this.appwrite = appwrite;
+		this.db = db;
+		this.client = this.db.client;
+		this.name = this.db.name;
+		this.collection = collection;
+		this.table = this.db.table [this.collection] || this.collection;
+		}
+	get (id) {
+		var promise = function (resolve, reject) {
+			this.db.client.getDocument (this.db.name, this.db.table, id).then (Function.api.appwrite.database.response.bind ({context: resolve}), reject);
+			}
+		return new Promise (promise.bind ({db: this}));
+		}
+	}
+
+Function.api.appwrite.database.response = function (data) { this.context (Function.api.appwrite.database.doc_format (data)); }
+
+Function.api.appwrite.database.doc_format = function (data) {
+	data.id = data.$id;
+	data.stamp = {
+		insert: new Date (data.$createdAt).getTime (),
+		update: new Date (data.$updatedAt).getTime (),
+		delete: 0,
+		}
+	for (var i in data) if (i.startsWith ("$")) delete data [i];
+	return data;
+	}
+
 /**
  * xxx
  *
@@ -414,10 +508,14 @@ Function.ip.parse = function (ip, input = {}) {
 	var timezone = Function.timezone (input.timezone);
 	data.timezone.code = timezone.code || data.timezone.code;
 	data.timezone.name = timezone.name || data.timezone.name;
-	data.timezone.offset = timezone.offset || Function.help.timezone_format (input.utc_offset) || data.timezone.offset;
+	data.timezone.offset = timezone.offset || Function.help.timezone (input.utc_offset) || data.timezone.offset;
 	data.coordinate.latitude = input.latitude || data.coordinate.latitude;
 	data.coordinate.longitude = input.longitude || data.coordinate.longitude;
 	return data;
+	}
+
+Function.ip.initialize = function (data) {
+	if (data) Function.ip (require ("./node_packages/ip.json"));
 	}
 
 Function.ip.trace = function () {}
@@ -464,18 +562,21 @@ Function.geo.country.data = {}
 Function.geo.country.region.data = {}
 Function.geo.country.region.city.data = {}
 
-Function.geo.initialize = function () {
-	for (var i in Function.geo.data.country.data) {
-		Function.geo.country.data [Function.geo.data.country.data [i].code] = Function.geo.data.country.data [i];
-		for (var x in Function.geo.data.country.region.data) {
-			if (Function.geo.data.country.region.data [x].id) {
-				if (Function.geo.data.country.region.data [x].country === Function.geo.data.country.data [i].id) {
-					Function.geo.country.data [Function.geo.data.country.data [i].code].region.data [Function.geo.data.country.region.data [x].code] = Function.geo.data.country.region.data [x];
-					for (var o in Function.geo.data.country.region.city.data) {
-						if (Function.geo.data.country.region.city.data [o].id) {
-							if (Function.geo.data.country.region.city.data [o].country === Function.geo.data.country.data [i].id) {
-								if (Function.geo.data.country.region.city.data [o].region === Function.geo.data.country.region.data [x].id) {
-									Function.geo.country.data [Function.geo.data.country.data [i].code].region.city.data [Function.geo.data.country.region.city.data [o].code] = Function.geo.data.country.region.city.data [o];
+Function.geo.initialize = function (data) {
+	if (data) Function.geo (require ("./node_packages/geo.json"));
+	else {
+		for (var i in Function.geo.data.country.data) {
+			Function.geo.country.data [Function.geo.data.country.data [i].code] = Function.geo.data.country.data [i];
+			for (var x in Function.geo.data.country.region.data) {
+				if (Function.geo.data.country.region.data [x].id) {
+					if (Function.geo.data.country.region.data [x].country === Function.geo.data.country.data [i].id) {
+						Function.geo.country.data [Function.geo.data.country.data [i].code].region.data [Function.geo.data.country.region.data [x].code] = Function.geo.data.country.region.data [x];
+						for (var o in Function.geo.data.country.region.city.data) {
+							if (Function.geo.data.country.region.city.data [o].id) {
+								if (Function.geo.data.country.region.city.data [o].country === Function.geo.data.country.data [i].id) {
+									if (Function.geo.data.country.region.city.data [o].region === Function.geo.data.country.region.data [x].id) {
+										Function.geo.country.data [Function.geo.data.country.data [i].code].region.city.data [Function.geo.data.country.region.city.data [o].code] = Function.geo.data.country.region.city.data [o];
+										}
 									}
 								}
 							}
@@ -546,6 +647,15 @@ Function.geo.initialize = function () {
  * xxx://xxx.xxx.xxx/xxx
  */
 
+Function.help = function () {}
+Function.help.timezone = function (timezone) { timezone = timezone || ""; if (timezone.includes (":")) return timezone; else return timezone.to_split (":", 3); }
+Function.help.host = function () {}
+Function.help.host.check = function (host, check) { return host.endsWith ("/" + check) || host.endsWith ("." + check) || ("#" + host).endsWith ("#" + check); }
+
+Function.current = function (input) { return "./" + input; }
+
+Function ["favorite.ico"] = "favicon.ico";
+
 /**
  * xxx
  *
@@ -575,8 +685,11 @@ Define (Function.fs.api, "engine", null, {writable: true});
  * xxx://xxx.xxx.xxx/xxx
  */
 
-Define (Function, "vue", function () {});
-Define (Function.vue, "session", class {
+Function.express = function () {}
+
+Function.vue = function () {}
+
+Function.vue.session = class {
 	constructor (session) { this.session = session; }
 	config (... option) { return this.session.config (... option); }
 	set (key, value, ... option) { return this.session.set (this.key (key), Function.hash.encode (value), ... option); }
@@ -589,7 +702,7 @@ Define (Function.vue, "session", class {
 			return this.set (key, value, ... option);
 			}
 		}
-	});
+	}
 
 /**
  * xxx
@@ -677,6 +790,7 @@ Symbol.library = {
 	path: Function.path, fs: Function.fs,
 	window: Function.window, document: Function.document,
 	express: Function.express, angular: Function.angular, vue: Function.vue,
+	help: Function.help, current: Function.current,
 	}
 
 /**

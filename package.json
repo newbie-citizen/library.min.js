@@ -1,6 +1,10 @@
 {
 "name": "library.min.js",
-"version": "14.0.0-16",
+"version": "15.0.0-0",
 "description": "",
-"main": "package.js"
+"main": "package.js",
+"dependencies": {
+	"axios": "^1.6.8",
+	"appwrite": "^14.0.1"
+	}
 }

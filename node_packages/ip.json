@@ -1,0 +1,7 @@
+{
+"data": [
+	{"ip": {"address": "1.1.1.1", "network": "1.1.1.1/1"}, "internet": {"service": {"name": "Cloudflare", "provider": "Cloudflare"}}, "country": {"code": "", "name": ""}, "region": {"code": "", "name": ""}, "city": {"code": "", "name": ""}, "coordinate": {"latitude": 0, "longitude": 0}, "timezone": {"code": "", "offset": ""}},
+	{"ip": {"address": "8.8.8.8", "network": "8.8.8.8/8"}, "internet": {"service": {"name": "Google DNS", "provider": "Google"}}, "country": {"code": "", "name": ""}, "region": {"code": "", "name": ""}, "city": {"code": "", "name": ""}, "coordinate": {"latitude": 0, "longitude": 0}, "timezone": {"code": "", "offset": ""}},
+	{"ip": {"address": "0.0.0.0", "network": "0.0.0.0/0"}, "internet": {"service": {"name": "", "provider": ""}}, "country": {"code": "", "name": ""}, "region": {"code": "", "name": ""}, "city": {"code": "", "name": ""}, "coordinate": {"latitude": 0, "longitude": 0}, "timezone": {"code": "", "offset": ""}}
+	]
+}
