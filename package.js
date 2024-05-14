@@ -265,20 +265,20 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 			query: {},
 			tag: parse.hash,
 			}
-		if (option.c) {}
+		if (option.x) {}
 		else {
-			parse_url.client = {}
-			parse_url.cross = {origin: false}
+			parse_url ["cross-origin"] = false
+			parse_url.cross = {origin: {}}
 			}
 		parse_url.base = {name: parse_url.domain.name || parse_url.host.name}
 		if (parse.origin !== "null") parse_url.host.reference = parse.origin;
 		if (parse.search) for (var [key, value] of parse.searchParams.entries ()) parse_url.query [key] = value;
-		if (option.client) if (parse_url.client = URL.parse_url (option.client, {c: true})) parse_url.cross.origin = true;
+		if (option ["cross-origin"]) if (parse_url.cross.origin = URL.parse_url (option ["cross-origin"], {x: true})) parse_url ["cross-origin"] = true;
 		return parse_url;
 		}
 	catch (error) {
 		if (option.retry) {}
-		else if (option.retry = true) return URL.parse_url ((option.protocol || "http") + "://" + url, option);
+		else if (option.retry = true) return URL.parse_url (((option.protocol || "http") + "://" + url), option);
 		}
 	});
 
@@ -295,7 +295,7 @@ Define (URL.domain, "parse", function (host) {
 		if (host.endsWith (URL.domain.data [i])) {
 			var n = host.substr (0, (host.length - URL.domain.data [i].length));
 			var name = n.split (".").end ();
-			var sub = n.substr (0, (n.length - (name.length + 1)));
+			var sub = n.substr (0, (n.length - (name.length + 1))) || "www";
 			var extension = URL.domain.data [i];
 			return {name: name.concat (extension), base: {name}, extension, sub, reference: sub.split (".").reverse ().join (".")}
 			break;
@@ -311,7 +311,7 @@ Define (URL.domain, "sort", function (domain) {
 	return [... sub, ... tld];
 	});
 
-Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", ".xxx"]), {writable: true});
+Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", ".io", ".app", ".xxx"]), {writable: true});
 
 /**
  * hash
