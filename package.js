@@ -121,7 +121,7 @@ Define.property (String, "big", function () { return this.toUpperCase (); });
 Define.property (String, "begin", function (input) { if (typeof input === "string") return this.startsWith (input); else return this.substr (input); });
 Define.property (String, "end", function (input) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
 Define.property (String, "reverse", function () { return this.split ("").reverse ().join (""); });
-Define.property (String, "json", function () { return JSON.stringify (this); });
+Define.property (String, "json", function (data) { if (this) return JSON.parse (this); else return data; });
 Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
 Define.property (String, "to_replace", function (key, value) { if (typeof key === "object") { var data = this.concat (""); for (var i in key) { if (value) if (value.exclude) if (value.exclude.includes (i)) continue; else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); } return data; } else return this.split (key).join (value); });
 Define.property (String, "print_format", function (... format) { var data = this.split ("%s"); var index = - 1; for (var i in format) { index += 2; data.splice (index, 0, format [i]); } return data.join (""); });
@@ -166,8 +166,28 @@ Define (Number.float, "separator", (1 / 2).toString ().substr (1, 1));
  */
 
 Define.property (Function, "string", function () { return this.toString (); });
+
 Define (Function, "context", function (context) { return context || function () {} });
 Define (Function, "option", function (option) { return option || {} });
+
+Define (Function, "promise", class {
+	constructor (promise) {
+		this.promise = new Promise (promise);
+		}
+	then (context = function () {}) {
+		this.context = context;
+		if (this.error) return this.promise.then (this.context).catch (this.error);
+		return this;
+		}
+	catch (context = function () {}) {
+		this.error = context;
+		if (this.context) return this.promise.then (this.context).catch (this.error);
+		return this;
+		}
+	emit (context) {
+		return this.then (context).catch (Function.context (this.error));
+		}
+	});
 
 /**
  * date time
@@ -181,6 +201,97 @@ Define (Function, "option", function (option) { return option || {} });
 
 Define.property (Date, "string", function () { return this.toString (); });
 
+Define (Date, "time", class {
+	constructor (... option) {
+		this.help = new Date.time.help (this);
+		if (typeof option [0] === "object") this.start (), this.timezone (option [0]);
+		else if (typeof option [0] === "string" && option [0].includes ("/")) this.start (), this.timezone (option [0]);
+		else if (typeof option [0] === "number" && option [0] > 10000) this.start (option [0]);
+		else this.start (... option);
+		}
+	start (... option) {
+		var date = new Date (... option);
+		var get = new Date.time.get (date);
+		var format = this.help.format (get.year (), get.month (), get.day (), get.hour (), get.minute (), get.second (), get.ms ());
+		this.universal = new Date (format);
+		this.utc = this.gmt = new Date.time.get (this.universal);
+		return this;
+		}
+	timezone (timezone) {
+		if (typeof timezone === "string") {
+			var timezone = Function.timezone.data.select ({identifier: timezone});
+			if (timezone.length) timezone = timezone.begin ().canonical;
+			else timezone = {}
+			}
+		this.param = this.help.param (timezone);
+		this.calc = this.help.calc (this.param);
+		this.current = new Date ((this.utc || this.gmt).stamp () + this.calc);
+		this.date = new Date.time.get (this.current);
+		return this;
+		}
+	format (format) {
+		var to_format = this.help.format ();
+		var date = [];
+		var split = format.split ("");
+		for (var i in split) date.push (to_format [split [i]] || split [i]);
+		return date.join ("");
+		}
+	year () { return this.date.year (); }
+	month (type) { return this.date.month (type); }
+	day (type) { return this.date.day (type); }
+	hour (type) { return this.date.hour (type); }
+	minute () { return this.date.minute (); }
+	second () { return this.date.second (); }
+	ms () { return this.date.ms (); }
+	week () { return this.date.week (); }
+	time () { return this.date.time (); }
+	stamp () { return this.date.stamp (); }
+	day_night () { return this.date.day_night (); }
+	});
+
+Define (Date.time, "get", class {
+	constructor (date) { this.date = date; }
+	year () { return (this.date.getUTCFullYear () + 0).toString (); }
+	month (type) { if (type === "name") return Date.time.month.name [this.week ()]; else return (this.date.getUTCMonth () + Date.time.month.log).toString ().padStart (2, "0"); }
+	day (type) { if (type === "name") return Date.time.day.name [this.week ()]; else return (this.date.getUTCDate () + 0).toString ().padStart (2, "0"); }
+	hour (type) { if (type === "day-night") { var hour = this.date.getUTCHours () - 12; if (hour === 0) hour = 12; return hour.toString ().padStart (2, "0"); } else return (this.date.getUTCHours () + 0).toString ().padStart (2, "0"); }
+	minute () { return (this.date.getUTCMinutes () + 0).toString ().padStart (2, "0"); }
+	second () { return (this.date.getUTCSeconds () + 0).toString ().padStart (2, "0"); }
+	ms () { return (this.date.getUTCMilliseconds () + 0).toString ().padStart (3, "0"); }
+	week () { return (this.date.getUTCDay () + 0).toString ().padStart (2, "0"); }
+	time () { return this.date.getTime (); }
+	stamp () { return this.date.getTime (); }
+	day_night () { if (this.date.getUTCHours () > 11) return "PM"; else return "AM"; }
+	});
+
+Define (Date.time, "help", class {
+	constructor (date) { this.date = date; }
+	param (option = {}) { return {day: (option.day || 0) * 86400000, hour: (option.hour || 0) * 3600000, minute: (option.minute || 0) * 60000, second: (option.second || 0) * 1000, } }
+	calc (option) { return option.day + option.hour + option.minute + option.second; }
+	format (year, month, day, hour, minute, second, ms) {
+		if (arguments.length) {
+			var D = [year, month, day].join ("-");
+			var T = "T" + [hour, minute, second].join (":") + "." + ms;
+			return D + T + "Z";
+			}
+		else {
+			return {
+				"Y": this.date.year (),
+				"M": this.date.month (), "F": this.date.month ("name"),
+				"D": this.date.day (), "L": this.date.day ("name"),
+				"H": this.date.hour (), "J": this.date.hour ("day-night"),
+				"I": this.date.minute (),
+				"S": this.date.second (),
+				"X": this.date.ms (),
+				"A": this.date.day_night (),
+				}
+			}
+		}
+	});
+
+Define (Date.time, "month", {log: 1, name: {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}});
+Define (Date.time, "day", {log: 0, name: {"01": "Monday", "02": "Tuesday", "03": "Wednesday", "04": "Thursday", "05": "Friday", "06": "Saturday", "07": "Sunday"}});
+
 function Time () { return Date.now (); }
 Define (Time, "sleep", function (context, second = 1) { return setTimeout (context, (second * 1000)); });
 Define (Time.sleep, "emit", function (context) { return setTimeout (context, 100); });
@@ -193,13 +304,25 @@ Function.timeout.sleep = function (value) { if (arguments.length) return Functio
 Function.timeout.sleep.value = 10;
 
 Function.timezone = function (timezone) {
-	for (var i in Function.geo.data.timezone) {
-		if ([Function.geo.data.timezone [i].id, Function.geo.data.timezone [i].code].includes (timezone)) {
-			return Function.geo.data.timezone [i];
+	for (var i in Function.timezone.data) {
+		if ([Function.timezone.data [i].id, Function.timezone.data [i].identifier].includes (timezone)) {
+			return Function.timezone.data [i];
 			}
 		}
 	return {}
 	}
+
+Function.timezone.offset = function () {}
+Function.timezone.offset.format = function (timezone) {
+	if ((timezone = timezone || "").includes (":")) return timezone;
+	else return [timezone.substr (0, 3), timezone.substr (3)].join (":");
+	}
+
+Function.timezone.data = [
+	{id: "", identifier: "Asia/Jakarta", name: "", embed: "", offset: "+07:00", canonical: {hour: 7, minute: 0}},
+	{id: "", identifier: "GMT", name: "Greenwich Mean Time", embed: "", offset: "+00:00", canonical: {hour: 0, minute: 0}},
+	{id: "", identifier: "UTC", name: "Universal", embed: "", offset: "+00:00", canonical: {hour: 0, minute: 0}},
+	]
 
 /**
  * url
@@ -324,8 +447,12 @@ Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", "
  */
 
 Define (Function, "hash", function () {});
-Define (Function.hash, "encode", function (input) { return btoa (input); }, {writable: true});
-Define (Function.hash, "decode", function (input) { return atob (input); }, {writable: true});
+
+Define (Function.hash, "encode", function (input) { if (input) return btoa (input); else return ""; }, {writable: true});
+Define (Function.hash, "decode", function (input) { if (input) return atob (input); else return ""; }, {writable: true});
+Define (Function.hash, "md", function (input) { return Function.hash.__md (input).toString (); });
+Define (Function.hash, "sha", function (input) { return Function.hash.__sha (input).toString (); });
+Define (Function.hash.sha, "one", function (input) { return Function.hash.__sha_one (input).toString (); });
 
 Define (Function.hash, "crypto", function (algorithm, option) { return Function.hash.crypto.api.engine.createHash (algorithm, option); });
 Define (Function.hash.crypto, "md", function (input) { return Function.hash.crypto.api.engine.createHash ("md5").update (input).digest ("hex"); });
@@ -333,6 +460,13 @@ Define (Function.hash.crypto, "sha", function (input) { return Function.hash.cry
 Define (Function.hash.crypto.sha, "one", function (input) { return Function.hash.crypto.api.engine.createHash ("sha1").update (input).digest ("hex"); });
 Define (Function.hash.crypto, "api", function (engine) { if (engine) return Function.hash.crypto.api.engine = engine; else return Function.hash.crypto.api.engine = require ("crypto"); });
 Define (Function.hash.crypto.api, "engine", null, {writable: true});
+
+Define (Function.hash, "require", function (md, sha, sha_one) {
+	if (arguments.length) Function.hash.__md = md, Function.hash.__sha = sha, Function.hash.__sha_one = sha_one;
+	else return require ("crypto-js");
+	});
+
+Function.hash.require (Function.hash.crypto.md, Function.hash.crypto.sha, Function.hash.crypto.sha.one);
 
 /**
  * xxx
@@ -422,7 +556,7 @@ Function.api.appwrite = class {
 Function.api.appwrite.database = class {
 	constructor (appwrite, db) {
 		this.appwrite = appwrite;
-		this.client = new Function.api.appwrite.__databases (this.appwrite.client);
+		this.client = new Function.api.appwrite.__database (this.appwrite.client);
 		this.name = db;
 		this.snapshot = [];
 		}
@@ -439,18 +573,77 @@ Function.api.appwrite.database.collection = class {
 		this.name = this.db.name;
 		this.collection = collection;
 		this.table = this.db.table [this.collection] || this.collection;
+		this.data = {}
+		this.query = [];
 		}
 	get (id) {
 		var promise = function (resolve, reject) {
-			this.db.client.getDocument (this.db.name, this.db.table, id).then (Function.api.appwrite.database.response.bind ({context: resolve}), reject);
+			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			this.db.client.getDocument (this.db.name, this.db.table, id).then (doc, reject);
 			}
-		return new Promise (promise.bind ({db: this}));
+		return new Function.promise (promise.bind ({db: this}));
+		}
+	select (query) {
+		this.queries (query);
+		var promise = function (resolve, reject) {
+			var doc = Function.api.appwrite.database.document.array.bind ({context: resolve});
+			if (this.db.query.length) this.db.client.listDocuments (this.db.name, this.db.table, this.db.query).then (doc, reject);
+			else this.db.client.listDocuments (this.db.name, this.db.table).then (doc, reject);
+			}
+		return new Function.promise (promise.bind ({db: this}));
+		}
+	insert (data) {
+		if (data.id) if (this.id = data.id) delete data.id;
+		else this.id = Function.api.appwrite.__ID.unique ();
+		else this.id = Function.api.appwrite.__ID.unique ();
+		this.data = data;
+		var promise = function (resolve, reject) {
+			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			this.db.client.createDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
+			}
+		return new Function.promise (promise.bind ({db: this}));
+		}
+	update (query, data) {
+		if (typeof query === "string") this.id = query;
+		else this.id = query.id;
+		this.data = data;
+		var promise = function (resolve, reject) {
+			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			this.db.client.updateDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
+			}
+		return new Function.promise (promise.bind ({db: this}));
+		}
+	queries (query = {}) {
+		if (typeof query === "string") this.query.push (Function.api.appwrite.__query.equal ("$id", query));
+		else {
+			if (query.id) this.query.push (Function.api.appwrite.__query.equal ("$id", query.id));
+			if (query.limit) this.query.push (Function.api.appwrite.__query.limit (query.limit));
+			if (query.offset) this.query.push (Function.api.appwrite.__query.offset (query.offset));
+			if (query.sort) {
+				for (var i in query.sort) {
+					for (var x in query.sort [i]) {
+						var sort;
+						if (["$insert", "stamp.insert"].includes (x)) sort = "$createdAt";
+						else sort = x;
+						if (query.sort [i][x] === "ascending") this.query.push (Query.orderAsc (sort));
+						if (query.sort [i][x] === "descending") this.query.push (Query.orderDesc (sort));
+						}
+					}
+				}
+			if (query.equal) {
+				for (var i in query.equal) {
+					for (var x in query.equal [i]) {
+						this.query.push (Function.api.appwrite.__query.equal (x, query.equal [i][x]));
+						}
+					}
+				}
+			}
 		}
 	}
 
-Function.api.appwrite.database.response = function (data) { this.context (Function.api.appwrite.database.doc_format (data)); }
-
-Function.api.appwrite.database.doc_format = function (data) {
+Function.api.appwrite.database.document = function (data) { this.context (Function.api.appwrite.database.doc (data)); }
+Function.api.appwrite.database.document.array = function (data) { this.context ({total: data.total, data: data.documents.map (function (data) { return Function.api.appwrite.database.doc (data); })}); }
+Function.api.appwrite.database.doc = function (data) {
 	data.id = data.$id;
 	data.stamp = {
 		insert: new Date (data.$createdAt).getTime (),
@@ -459,6 +652,16 @@ Function.api.appwrite.database.doc_format = function (data) {
 		}
 	for (var i in data) if (i.startsWith ("$")) delete data [i];
 	return data;
+	}
+
+Function.api.appwrite.require = function (client, database, query, ID) {
+	if (arguments.length) {
+		Function.api.appwrite.__client = client;
+		Function.api.appwrite.__database = database;
+		Function.api.appwrite.__query = query;
+		Function.api.appwrite.__ID = ID;
+		}
+	else return require ("appwrite");
 	}
 
 /**
@@ -489,7 +692,7 @@ Function.ip.parse = function (ip, input = {}) {
 		ip: {address: (ip || ip_local), network: "", mask: "", version: 4},
 		internet: {service: {code: "", name: "", provider: ""}},
 		country: Function.geo.country (), region: {code: "", name: ""}, city: {code: "", name: ""},
-		timezone: {code: "GMT", name: "", offset: "+00:00"},
+		timezone: {identifier: "UTC", offset: "+00:00"},
 		language: [],
 		coordinate: {latitude: 0, longitude: 0},
 		}
@@ -506,9 +709,8 @@ Function.ip.parse = function (ip, input = {}) {
 	data.city.code = input.city_code || "";
 	data.city.name = input.city || "";
 	var timezone = Function.timezone (input.timezone);
-	data.timezone.code = timezone.code || data.timezone.code;
-	data.timezone.name = timezone.name || data.timezone.name;
-	data.timezone.offset = timezone.offset || Function.help.timezone (input.utc_offset) || data.timezone.offset;
+	data.timezone.identifier = timezone.identifier || data.timezone.identifier;
+	data.timezone.offset = timezone.offset || Function.timezone.offset.format (input.utc_offset) || data.timezone.offset;
 	data.coordinate.latitude = input.latitude || data.coordinate.latitude;
 	data.coordinate.longitude = input.longitude || data.coordinate.longitude;
 	return data;

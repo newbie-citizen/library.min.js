@@ -21,10 +21,6 @@
 			}
 		}
 	},
-"timezone": [
-	{"id": "120938782374663546554", "code": "Asia/Jakarta", "name": "WIB", "offset": "+07:00"},
-	{"id": "", "code": "", "name": "", "offset": "+00:00"}
-	],
 "currency": [
 	{"id": "12938029347872364373", "code": "USD", "name": "US Dollar", "exchange": [{"id": "12938029347872364373", "value": 1}]},
 	{"id": "02398482364652653637", "code": "IDR", "name": "Rupiah", "exchange": [{"id": "12938029347872364373", "value": 15123}]},
