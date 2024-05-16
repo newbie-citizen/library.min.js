@@ -72,6 +72,7 @@ Define (Object, "un_set", function (input) { return input === undefined || input
 
 Define (Object, "length", function (object) { var length = 0; for (var i in object) length ++; return length; });
 Define (Object, "clone", function (object) { return JSON.parse (JSON.stringify (object)); });
+Define (Object, "exclude", function (object, exclude) { var data = Object.clone (object); for (var i in exclude) delete data [exclude [i]]; return data; });
 
 /**
  * array
@@ -613,6 +614,17 @@ Function.api.appwrite.database.collection = class {
 			}
 		return new Function.promise (promise.bind ({db: this}));
 		}
+	delete (query) {
+		if (typeof query === "string") this.id = query;
+		else this.id = query.id;
+		this.limit = query.limit || 1024;
+		var promise = function (resolve, reject) {
+			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			if (this.db.id) this.db.client.deleteDocument (this.db.name, this.db.table, this.db.id).then (doc, reject);
+			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.api.appwrite.__query.limit (this.db.limit)]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
+			}
+		return new Function.promise (promise.bind ({db: this}));
+		}
 	queries (query = {}) {
 		if (typeof query === "string") this.query.push (Function.api.appwrite.__query.equal ("$id", query));
 		else {
@@ -924,50 +936,51 @@ Define (Function, "window", function () {
 		if (key === "scroll") window.onscroll = value;
 		if (["size:change", "size change"].includes (key)) window.onresize = value;
 		}
-	window.browser = function () {
+	window.agent = function () {
 		var browser = {
 			name: "", type: "", version: "", platform: "", model: "",
 			device: {type: "computer", version: "", platform: "", model: "", mobile: false},
 			}
+		var device = {type: "computer", version: "", platform: "", model: "", mobile: false}
 		if (window.navigator.userAgentData) {
 			if (window.navigator.userAgentData.brands.length) {
 				var nav = window.navigator.userAgentData.brands [2] || window.navigator.userAgentData.brands [1] || window.navigator.userAgentData.brands [0];
-				browser.device.platform = window.navigator.userAgentData.platform;
-				browser.device.mobile = window.navigator.userAgentData.mobile;
+				device.platform = window.navigator.userAgentData.platform;
+				device.mobile = window.navigator.userAgentData.mobile;
 				browser.version = nav.version;
-				browser.name = browser.device.platform + " " + nav.brand + "/" + browser.version;
+				browser.name = device.platform + " " + nav.brand + "/" + browser.version;
 				}
 			}
 		else browser.name = window.navigator.userAgent;
 		var agent = browser.name.toLowerCase ();
 		if (agent.includes ("windows")) {
-			browser.device.platform = "win";
+			device.platform = "win";
 			}
 		if (agent.includes ("android")) {
-			browser.device.model = "a";
-			browser.device.platform = "android";
+			device.model = "a";
+			device.platform = "android";
 			if (agent.includes ("wv")) browser.model = "web-view";
-			if (agent.includes ("mobile")) browser.device.type = "phone";
-			else browser.device.type = "tablet";
+			if (agent.includes ("mobile")) device.type = "phone";
+			else device.type = "tablet";
 			}
 		if (agent.includes ("mac")) {
-			browser.device.model = "i";
-			browser.device.platform = "apple";
-			if (agent.includes ("iphone")) browser.device.type = "phone";
-			else if (agent.includes ("ipad")) browser.device.type = "tablet";
-			else browser.device.type = "computer";
+			device.model = "i";
+			device.platform = "apple";
+			if (agent.includes ("iphone")) device.type = "phone";
+			else if (agent.includes ("ipad")) device.type = "tablet";
+			else device.type = "computer";
 			}
 		if (agent.includes ("firefox")) browser.platform = "mozilla";
 		else if (agent.includes ("chrome")) browser.platform = "chrome";
 		else if (agent.includes ("safari")) browser.platform = "safari";
 		else browser.platform = "*";
-		browser.type = (browser.device.type == "computer") ? "" : "mobile";
-		return browser;
+		browser.type = (device.type == "computer") ? "" : "mobile";
+		return {browser, device}
 		}
 	});
 
 Define (Function, "document", function () {
-	document.url = URL.parse_url (document.base_url = window.location.href);
+	document.url = URL.parse_url (document.base_url = window.location.href.toString ());
 	});
 
 /**
