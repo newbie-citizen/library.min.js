@@ -73,6 +73,7 @@ Define (Object, "un_set", function (input) { return input === undefined || input
 Define (Object, "length", function (object) { var length = 0; for (var i in object) length ++; return length; });
 Define (Object, "clone", function (object) { return JSON.parse (JSON.stringify (object)); });
 Define (Object, "exclude", function (object, exclude) { var data = Object.clone (object); for (var i in exclude) delete data [exclude [i]]; return data; });
+Define (Object, "key", function () {}); Define (Object.key, "convert", function (object, key) { var data = object, split = key.split ("."); for (var i in split) data = data [split [i]]; return data; });
 
 /**
  * array
@@ -95,12 +96,14 @@ Define.property (Array, "next", function (offset) { return this [Number (offset)
 Define.property (Array, "previous", function (offset) { return this [Number (offset) - 1]; });
 Define.property (Array, "unique", function (type) { if (type === "set") return new Set (this); else return Array.from (new Set (this)); });
 Define.property (Array, "json", function (type) { return this.map (function (data) { if (type === "encode") return JSON.stringify (data); else if (type === "decode") return JSON.parse (data); else return data; }); });
-Define.property (Array, "select", function (where) { var length = Object.length (where); return this.filter (function (data) { var count = 0; for (var i in where) { if (i.includes (".")) { var key = i.split ("."); for (var x in key) data = data [key [x]]; if (data === where [i]) count ++; } else if (data [i] === where [i]) count ++; } if (count === length) return true; else return false; }); });
+Define.property (Array, "select", function (query) { var length = Object.length (query); return this.filter (function (data) { var count = 0; for (var i in query) { if (i.includes (".")) { var key = i.split ("."); for (var x in key) data = data [key [x]]; if (data === query [i]) count ++; } else if (data [i] === query [i]) count ++; } if (count === length) return true; else return false; }); });
 Define.property (Array, "insert", function (offset, ... value) { return this.splice (offset, 0, ... value); });
 Define.property (Array, "update", function (offset, ... value) { return this.splice (offset, 1, ... value); });
 Define.property (Array, "delete", function (offset, length = 1) { return this.splice (offset, length); });
 Define.property (Array, "shuffle", function () { return Array.shuffle (this); });
 Define.property (Array, "index_of", function (value, offset) { return Array.index_of (this.indexOf (value, offset)); });
+Define.property (Array, "offset", function (offset, limit) { var data = [], count = 0, counter = 0; if (arguments.length === 1) for (var i in this) { count ++; data.push (this [i]); if (count >= offset) break; } else for (var i in this) { if (counter >= offset) { count ++; data.push (this [i]); if (count >= limit) break; } counter ++; } return data; });
+Define.property (Array, "order_by", function (... sort) { var data = this.clone (); for (var i in sort) { for (var x in sort [i]) { if (sort [i][x] === "ascending") data.sort (function (a, b) { if (Object.key.convert (a, this.key) < Object.key.convert (b, this.key)) return 0 - 1; else return 0; }.bind ({key: x})); if (sort [i][x] === "descending") data.sort (function (a, b) { if (Object.key.convert (a, this.key) > Object.key.convert (b, this.key)) return 0 - 1; else return 0; }.bind ({key: x})); } } return data; });
 Define.property (Array, "descriptor", "function");
 Define (Array, "shuffle", function (array, data = []) { if (array.length) { var i = Number.random (array.length - 1); data.push (array [i]); array.delete (i); Array.shuffle (array, data); } return data; });
 Define (Array, "index_of", function (input) { if (input >= 0) return input; });
@@ -121,6 +124,8 @@ Define.property (String, "small", function () { return this.toLowerCase (); });
 Define.property (String, "big", function () { return this.toUpperCase (); });
 Define.property (String, "begin", function (input) { if (typeof input === "string") return this.startsWith (input); else return this.substr (input); });
 Define.property (String, "end", function (input) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
+Define.property (String, "after", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (offset + input.length); else return ""; });
+Define.property (String, "before", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (0, offset); else return ""; });
 Define.property (String, "reverse", function () { return this.split ("").reverse ().join (""); });
 Define.property (String, "json", function (data) { if (this) return JSON.parse (this); else return data; });
 Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
@@ -171,7 +176,7 @@ Define.property (Function, "string", function () { return this.toString (); });
 Define (Function, "context", function (context) { return context || function () {} });
 Define (Function, "option", function (option) { return option || {} });
 
-Define (Function, "promise", class {
+Define (Promise, "context", class {
 	constructor (promise) {
 		this.promise = new Promise (promise);
 		}
@@ -470,7 +475,9 @@ Define (Function.hash, "require", function (md, sha, sha_one) {
 Function.hash.require (Function.hash.crypto.md, Function.hash.crypto.sha, Function.hash.crypto.sha.one);
 
 /**
- * xxx
+ * xml
+ * serialize
+ * json
  *
  * title
  * description
@@ -483,9 +490,162 @@ Define (Function, "xml", function () {});
 
 Define (Function, "serialize", function () {});
 
-Define (Function, "json", function () {});
-Define (Function.json, "encode", function (data) { return JSON.stringify (data); });
-Define (Function.json, "decode", function (data, value) { if (data) return JSON.parse (data); else return value; });
+Define (JSON, "encode", function (data) { return JSON.stringify (data); });
+Define (JSON, "decode", function (data, value) { if (data) return JSON.parse (data); else return value; });
+
+JSON.file = class {
+	constructor (config) {
+		if (config) {
+			this.config = config;
+			this.start ();
+			}
+		}
+	start (config) {
+		if (config) this.config = config;
+		this.db = new JSON.file.database (this);
+		return this;
+		}
+	}
+
+JSON.file.database = class {
+	constructor (api) {
+		this.api = api;
+		this.snapshot = [];
+		}
+	collection (collection) {
+		return new JSON.file.database.collection (this.api, this, collection);
+		}
+	name (file) {
+		return [this.api.config.directory, (file + Function.file.extension.json)].join (Function.path.separator ());
+		}
+	}
+
+JSON.file.database.collection = class {
+	constructor (api, db, collection) {
+		this.api = api;
+		this.db = db;
+		this.collection = collection;
+		this.table = this.db.table [this.collection] || this.collection;
+		this.file = this.db.name (this.table);
+		if (true) {
+			this.stringify = "";
+			this.data = require (this.file).data;
+			}
+		else {
+			this.stringify = Function.fs.file_read (this.file);
+			this.data = JSON.parse (this.stringify);
+			}
+		}
+	get (id) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	select (query) {
+		var promise = function (resolve, reject) {
+			var data = this.db.data.select (query);
+			var total = 0;
+			resolve ({data, total});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	insert (data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	update (query, data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	delete (data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	}
+
+JSON.bin = class {
+	constructor (config) {
+		if (config) {
+			this.config = config;
+			this.start ();
+			}
+		}
+	start (config) {
+		if (config) this.config = config;
+		this.config = this.config || {}
+		this.config.url = this.config.url || "default";
+		this.config.url = JSON.bin.url [this.config.url] || this.config.url;
+		this.db = new JSON.bin.database (this);
+		return this;
+		}
+	}
+
+JSON.bin.database = class {
+	constructor (api) {
+		this.api = api;
+		this.snapshot = [];
+		}
+	collection (collection) {
+		return new JSON.bin.database.collection (this.api, this, collection);
+		}
+	}
+
+JSON.bin.database.collection = class {
+	constructor (api, db, collection) {
+		this.api = api;
+		this.db = db;
+		this.collection = collection;
+		this.table = this.db.table [this.collection] || this.collection;
+		this.client = URL.get (this.api.config.url.concat (this.table));
+		}
+	get (id) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	select (query) {
+		var promise = function (resolve, reject) {
+			this.db.client.catch (reject).then (function (respond) {
+				var data = respond.data.select (query);
+				var total = 0;
+				resolve ({data, total});
+				});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	insert (data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	update (query, data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	delete (data) {
+		var promise = function (resolve, reject) {
+			resolve ({});
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	}
+
+JSON.bin.url = {
+	"n-point": "https://api.npoint.io/",
+	"keeper": "https://jsonkeeper.com/b/",
+	"git": "",
+	}
 
 /**
  * dom document
@@ -582,7 +742,7 @@ Function.api.appwrite.database.collection = class {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
 			this.db.client.getDocument (this.db.name, this.db.table, id).then (doc, reject);
 			}
-		return new Function.promise (promise.bind ({db: this}));
+		return new Promise.context (promise.bind ({db: this}));
 		}
 	select (query) {
 		this.queries (query);
@@ -591,7 +751,7 @@ Function.api.appwrite.database.collection = class {
 			if (this.db.query.length) this.db.client.listDocuments (this.db.name, this.db.table, this.db.query).then (doc, reject);
 			else this.db.client.listDocuments (this.db.name, this.db.table).then (doc, reject);
 			}
-		return new Function.promise (promise.bind ({db: this}));
+		return new Promise.context (promise.bind ({db: this}));
 		}
 	insert (data) {
 		if (data.id) if (this.id = data.id) delete data.id;
@@ -602,7 +762,7 @@ Function.api.appwrite.database.collection = class {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
 			this.db.client.createDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
 			}
-		return new Function.promise (promise.bind ({db: this}));
+		return new Promise.context (promise.bind ({db: this}));
 		}
 	update (query, data) {
 		if (typeof query === "string") this.id = query;
@@ -612,7 +772,7 @@ Function.api.appwrite.database.collection = class {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
 			this.db.client.updateDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
 			}
-		return new Function.promise (promise.bind ({db: this}));
+		return new Promise.context (promise.bind ({db: this}));
 		}
 	delete (query) {
 		if (typeof query === "string") this.id = query;
@@ -623,7 +783,7 @@ Function.api.appwrite.database.collection = class {
 			if (this.db.id) this.db.client.deleteDocument (this.db.name, this.db.table, this.db.id).then (doc, reject);
 			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.api.appwrite.__query.limit (this.db.limit)]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
 			}
-		return new Function.promise (promise.bind ({db: this}));
+		return new Promise.context (promise.bind ({db: this}));
 		}
 	queries (query = {}) {
 		if (typeof query === "string") this.query.push (Function.api.appwrite.__query.equal ("$id", query));
@@ -881,6 +1041,7 @@ Function ["favorite.ico"] = "favicon.ico";
  */
 
 Define (Function, "path", function () {});
+Define (Function.path, "separator", function (separator) { if (separator) return Function.path.separator.value = separator; else return Function.path.separator.value; });
 Define (Function.path, "join", function (... path) { return Function.path.api.engine.join (... path); });
 Define (Function.path, "api", function (engine) { if (engine) return Function.path.api.engine = engine; else return Function.path.api.engine = require ("path"); });
 Define (Function.path.api, "engine", null, {writable: true});
@@ -888,6 +1049,14 @@ Define (Function.path.api, "engine", null, {writable: true});
 Define (Function, "fs", function () {});
 Define (Function.fs, "api", function (engine) { if (engine) return Function.fs.api.engine = engine; else return Function.fs.api.engine = require ("fs"); });
 Define (Function.fs.api, "engine", null, {writable: true});
+
+Define (Function, "file", function () {});
+Define (Function.file, "extension", {
+	html: ".html",
+	css: ".css",
+	js: ".js",
+	json: ".json",
+	});
 
 /**
  * xxx
@@ -996,10 +1165,10 @@ Define (Function, "document", function () {
 Symbol.library = {
 	define: Define, context: Function.context,
 	function: Function, object: Object, array: Array, string: String, number: Number, math: Math, infinity: Infinity, date: Date, time: Time, timeout: Function.timeout, timezone: Function.timezone,
-	char: String.char, is_boolean: Object.is_boolean, is_object: Object.is_object, is_array: Object.is_array, is_string: Object.is_string, is_number: Object.is_number, is_nan: Object.is_nan, is_integer: Object.is_integer, is_finite: Object.is_finite, is_float: Object.is_float, is_function: Object.is_function, is_date: Object.is_date, is_regex: Object.is_regex, is_null: Object.is_null, is_set: Object.is_set, is_define: Object.is_define, un_define: Object.un_define, un_set: Object.un_set,
-	url: URL, parse_url: URL.parse_url,
-	hash: Function.hash, xml: Function.xml, serialize: Function.serialize, json: Function.json,
+	url: URL, parse_url: URL.parse_url, promise: Promise,
+	data: Function.data, hash: Function.hash, xml: Function.xml, serialize: Function.serialize, json: JSON,
 	dom: Function.dom,
+	char: String.char, is_boolean: Object.is_boolean, is_object: Object.is_object, is_array: Object.is_array, is_string: Object.is_string, is_number: Object.is_number, is_nan: Object.is_nan, is_integer: Object.is_integer, is_finite: Object.is_finite, is_float: Object.is_float, is_function: Object.is_function, is_date: Object.is_date, is_regex: Object.is_regex, is_null: Object.is_null, is_set: Object.is_set, is_define: Object.is_define, un_define: Object.un_define, un_set: Object.un_set,
 	plugin: Function.plugin, api: Function.api,
 	ip: Function.ip, geo: Function.geo,
 	path: Function.path, fs: Function.fs,
