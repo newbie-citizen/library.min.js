@@ -70,6 +70,9 @@ Define (Object, "is_define", function (input) { return ! Object.un_define (input
 Define (Object, "un_define", function (input) { return input === undefined; });
 Define (Object, "un_set", function (input) { return input === undefined || input === null; });
 
+Define (Object, "to_string", function (input) { if (Object.is_set (input)) return input.toString (); else return ""; });
+Define (Object, "to_number", function (input) { if (Object.is_set (input)) return Number (input); else return 0; });
+
 Define (Object, "length", function (object) { var length = 0; for (var i in object) length ++; return length; });
 Define (Object, "clone", function (object) { return JSON.parse (JSON.stringify (object)); });
 Define (Object, "exclude", function (object, exclude) { var data = Object.clone (object); for (var i in exclude) delete data [exclude [i]]; return data; });
@@ -119,6 +122,8 @@ Define (Array, "index_of", function (input) { if (input >= 0) return input; });
  * xxx://xxx.xxx.xxx/xxx
  */
 
+Define.property (String, "string", function () { return this.toString (); });
+Define.property (String, "number", function () { return Number (this); });
 Define.property (String, "integer", function () { return parseInt (this); });
 Define.property (String, "float", function () { return parseFloat (this); });
 Define.property (String, "small", function () { return this.toLowerCase (); });
@@ -154,6 +159,9 @@ Define (String, "char", {
  */
 
 Define.property (Number, "string", function () { return this.toString (); });
+Define.property (Number, "number", function () { return Number (this); });
+Define.property (Number, "integer", function () { return parseInt (this); });
+Define.property (Number, "float", function () { return parseFloat (this); });
 Define.property (Number, "byte", function (option) { return Number.byte.parse (this, option); });
 Define (Number, "zero", 0);
 Define (Number, "one", 1);
@@ -303,7 +311,7 @@ Define (Date.time, "help", class {
 	});
 
 Define (Date.time, "expire", function (stamp, expire) {
-	return Date.now () > new Date.time (stamp || Date.now ()).timezone (expire).stamp ();
+	return Date.now () > new Date.time (Object.to_number (stamp) || Date.now ()).timezone (expire).stamp ();
 	});
 
 Define (Date.time, "month", {log: 1, name: {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}});
@@ -556,7 +564,7 @@ JSON.file.database.collection = class {
 		}
 	select (query = {}) {
 		var promise = function (resolve, reject) {
-			var data = this.db.data;
+			var data = this.db.data.filter (function (data) { if (data.id) return true; else return false; });
 			if (query.equal) data = data.select (query.equal);
 			if (query.sort) data = data.order_by (... query.sort);
 			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);

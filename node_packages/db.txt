@@ -1,6 +1,7 @@
 Account
 
 Router
+	reference string 128
 	name string 255
 	type string 24
 	url string [] 1024
@@ -10,6 +11,7 @@ Router
 	theme string {} 1024
 
 Content
+	reference string 128
 	title string 255
 	sub_title string 255
 	header string 10240
@@ -18,24 +20,26 @@ Content
 	type string 24
 	type_of string 32
 	meta string 1048576
-	tag string [] 1024
-	categories string [] 1024
+	tag string [] 128
+	categories string [] 128
 
 Tag
-	parent string 128
-	name string 255
-	path string 255
+	reference string 128
+	key string 255
+	value string 255
 
 Categories
-	parent string 128
-	name string 255
-	path string 255
+	reference string 128
+	key string 255
+	value string 255
 
 Config
+	reference string 128
 	key string 255 require
 	value string 1048576
 
 IP-Address
+	reference string 128
 	ip
 	country string 255
 	region string 255
@@ -43,7 +47,7 @@ IP-Address
 	data string 1048576
 
 Visitor
-	identity string 128
+	reference string 128
 	ip
 	country string 255
 	region string 255
