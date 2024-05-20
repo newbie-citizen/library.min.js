@@ -74,6 +74,7 @@ Define (Object, "length", function (object) { var length = 0; for (var i in obje
 Define (Object, "clone", function (object) { return JSON.parse (JSON.stringify (object)); });
 Define (Object, "exclude", function (object, exclude) { var data = Object.clone (object); for (var i in exclude) delete data [exclude [i]]; return data; });
 Define (Object, "key", function () {}); Define (Object.key, "convert", function (object, key) { var data = object, split = key.split ("."); for (var i in split) data = data [split [i]]; return data; });
+Define (Object, "value", Object.values);
 
 /**
  * array
@@ -132,7 +133,15 @@ Define.property (String, "to_split", function (separator = " ", offset = 1) { va
 Define.property (String, "to_replace", function (key, value) { if (typeof key === "object") { var data = this.concat (""); for (var i in key) { if (value) if (value.exclude) if (value.exclude.includes (i)) continue; else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); } return data; } else return this.split (key).join (value); });
 Define.property (String, "print_format", function (... format) { var data = this.split ("%s"); var index = - 1; for (var i in format) { index += 2; data.splice (index, 0, format [i]); } return data.join (""); });
 Define.property (String, "descriptor", "function");
-Define (String, "char", {small: function () { return "abcdefghijklmnopqrstuvwxyz"; }, big: function () { return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }, alpha: {numeric: "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"}, space: " ", underscore: "_", separator: {eol: "; ", coma: ", "}});
+
+Define (String, "char", {
+	small: "abcdefghijklmnopqrstuvwxyz",
+	big: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+	alpha: {numeric: "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"},
+	space: " ",
+	underscore: "_",
+	separator: {eol: "; ", coma: ", ", c: ": "},
+	});
 
 /**
  * number math
@@ -250,7 +259,6 @@ Define (Date, "time", class {
 	second () { return this.date.second (); }
 	ms () { return this.date.ms (); }
 	week () { return this.date.week (); }
-	time () { return this.date.time (); }
 	stamp () { return this.date.stamp (); }
 	day_night () { return this.date.day_night (); }
 	});
@@ -265,7 +273,6 @@ Define (Date.time, "get", class {
 	second () { return (this.date.getUTCSeconds () + 0).toString ().padStart (2, "0"); }
 	ms () { return (this.date.getUTCMilliseconds () + 0).toString ().padStart (3, "0"); }
 	week () { return (this.date.getUTCDay () + 0).toString ().padStart (2, "0"); }
-	time () { return this.date.getTime (); }
 	stamp () { return this.date.getTime (); }
 	day_night () { if (this.date.getUTCHours () > 11) return "PM"; else return "AM"; }
 	});
@@ -295,10 +302,15 @@ Define (Date.time, "help", class {
 		}
 	});
 
+Define (Date.time, "expire", function (stamp, expire) {
+	return Date.now () > new Date.time (stamp || Date.now ()).timezone (expire).stamp ();
+	});
+
 Define (Date.time, "month", {log: 1, name: {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}});
 Define (Date.time, "day", {log: 0, name: {"01": "Monday", "02": "Tuesday", "03": "Wednesday", "04": "Thursday", "05": "Friday", "06": "Saturday", "07": "Sunday"}});
 
 function Time () { return Date.now (); }
+Define (Time, "stamp", function () { return Date.now (); });
 Define (Time, "sleep", function (context, second = 1) { return setTimeout (context, (second * 1000)); });
 Define (Time.sleep, "emit", function (context) { return setTimeout (context, 100); });
 Define (Time.sleep, "clear", function (context) { return clearTimeout (context); });
@@ -542,9 +554,13 @@ JSON.file.database.collection = class {
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
-	select (query) {
+	select (query = {}) {
 		var promise = function (resolve, reject) {
-			var data = this.db.data.select (query);
+			var data = this.db.data;
+			if (query.equal) data = data.select (query.equal);
+			if (query.sort) data = data.order_by (... query.sort);
+			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
+			else data = data.offset (query.limit);
 			var total = 0;
 			resolve ({data, total});
 			}
@@ -603,7 +619,7 @@ JSON.bin.database.collection = class {
 		this.db = db;
 		this.collection = collection;
 		this.table = this.db.table [this.collection] || this.collection;
-		this.client = URL.get (this.api.config.url.concat (this.table));
+		this.client = URL.get (this.api.config.url.print_format (this.table));
 		}
 	get (id) {
 		var promise = function (resolve, reject) {
@@ -611,10 +627,14 @@ JSON.bin.database.collection = class {
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
-	select (query) {
+	select (query = {}) {
 		var promise = function (resolve, reject) {
 			this.db.client.catch (reject).then (function (respond) {
 				var data = respond.data.select (query);
+				if (query.equal) data = data.select (query.equal);
+				if (query.sort) data = data.order_by (... query.sort);
+				if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
+				else data = data.offset (query.limit);
 				var total = 0;
 				resolve ({data, total});
 				});

@@ -1,39 +1,49 @@
 Account
 
+Router
+	name string 255
+	type string 24
+	url string [] 1024
+	path string 1024 require
+	query string {} 1024
+	content string 128
+	theme string {} 1024
+
 Content
-	title string 1024
-	sub_title string 1024
-	header string 4096
-	data string 1048576
+	title string 255
+	sub_title string 255
+	header string 10240
+	key string 255
+	value string 1048576
+	type string 24
+	type_of string 32
 	meta string 1048576
 	tag string [] 1024
 	categories string [] 1024
 
+Tag
+	parent string 128
+	name string 255
+	path string 255
+
 Categories
 	parent string 128
 	name string 255
+	path string 255
 
-Router
-	name string 255
-	type string 24
-	url string 1024
-	uri string [] 1024
-	path string 1024
-	content string 128
-	theme string 255 default {}
-
-Setting
+Config
 	key string 255 require
 	value string 1048576
 
-Visitor
+IP-Address
 	ip
 	country string 255
 	region string 255
 	city string 255
 	data string 1048576
 
-Geo Location
+Visitor
+	identity string 128
 	ip
 	country string 255
 	region string 255
