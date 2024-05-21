@@ -128,14 +128,15 @@ Define.property (String, "integer", function () { return parseInt (this); });
 Define.property (String, "float", function () { return parseFloat (this); });
 Define.property (String, "small", function () { return this.toLowerCase (); });
 Define.property (String, "big", function () { return this.toUpperCase (); });
-Define.property (String, "begin", function (input) { if (typeof input === "string") return this.startsWith (input); else return this.substr (input); });
-Define.property (String, "end", function (input) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
+Define.property (String, "begin", function (input = 1) { if (typeof input === "string") return this.startsWith (input); else return this.substr (input); });
+Define.property (String, "end", function (input = 1) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
 Define.property (String, "after", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (offset + input.length); else return ""; });
 Define.property (String, "before", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (0, offset); else return ""; });
 Define.property (String, "reverse", function () { return this.split ("").reverse ().join (""); });
 Define.property (String, "json", function (data) { if (this) return JSON.parse (this); else return data; });
 Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
 Define.property (String, "to_replace", function (key, value) { if (typeof key === "object") { var data = this.concat (""); for (var i in key) { if (value) if (value.exclude) if (value.exclude.includes (i)) continue; else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); } return data; } else return this.split (key).join (value); });
+Define.property (String, "to_param", function (param) { var data = this.toString (); for (var i in param) data = data.to_replace (":" + i, param [i]); return data; });
 Define.property (String, "print_format", function (... format) { var data = this.split ("%s"); var index = - 1; for (var i in format) { index += 2; data.splice (index, 0, format [i]); } return data.join (""); });
 Define.property (String, "descriptor", "function");
 
@@ -360,7 +361,13 @@ Function.timezone.data = [
  * xxx://xxx.xxx.xxx/xxx
  */
 
-Define (URL, "encode", function () {});
+Define (URL, "encode", function (url, option) {
+	option = Function.option (option);
+	var query = [];
+	if (option.query) for (var i in option.query) query.push (i + "=" + option.query [i]);
+	if (query.length) url = [url, query.join ("&")].join ("?");
+	return url;
+	});
 Define (URL, "decode", function (url) { return decodeURI (url); });
 Define (URL, "get", function (url, option = {}) { if (Array.isArray (url)) url = url.join (""); return new URL.ajax (url, {method: "get", ... option}); });
 Define (URL, "post", function (url, data = {}, option = {}) { if (Array.isArray (url)) url = url.join (""); return new URL.ajax (url, {method: "post", data, ... option}); });
@@ -462,6 +469,83 @@ Define (URL.domain, "sort", function (domain) {
 
 Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", ".io", ".app", ".xxx"]), {writable: true});
 
+Define (URL, "protocol", {
+	scheme: {"http": "http://", "http:secure": "https://"},
+	});
+
+Define (URL, "is_protocol", function (input) {});
+
+Define (URL, "header", function () {});
+Define (URL.header, "status", {
+	OK: 200, success: 200,
+	error: {request: 400, forbidden: 403, found: 404, timeout: 408, legal: 451, internal: 500},
+	code: {
+		100: "Continue",
+		101: "Switching Protocols",
+		102: "Processing",
+		200: "OK",
+		201: "Created",
+		202: "Accepted",
+		203: "Non-authoritative Information",
+		204: "No Content",
+		205: "Reset Content",
+		206: "Partial Content",
+		207: "Multi-Status",
+		208: "Already Reported",
+		226: "IM Used",
+		300: "Multiple Choices",
+		301: "Moved Permanently",
+		302: "Found",
+		303: "See Other",
+		304: "Not Modified",
+		305: "Use Proxy",
+		307: "Temporary Redirect",
+		308: "Permanent Redirect",
+		400: "Bad Request",
+		401: "Unauthorized",
+		402: "Payment Required",
+		403: "Forbidden",
+		404: "Not Found",
+		405: "Method Not Allowed",
+		406: "Not Acceptable",
+		407: "Proxy Authentication Required",
+		408: "Request Timeout",
+		409: "Conflict",
+		410: "Gone",
+		411: "Length Required",
+		412: "Precondition Failed",
+		413: "Payload Too Large",
+		414: "Request-URI Too Long",
+		415: "Unsupported Media Type",
+		416: "Requested Range Not Satisfiable",
+		417: "Expectation Failed",
+		418: "I'm a teapot",
+		421: "Misdirected Request",
+		422: "Unprocessable Entity",
+		423: "Locked",
+		424: "Failed Dependency",
+		426: "Upgrade Required",
+		428: "Precondition Required",
+		429: "Too Many Requests",
+		431: "Request Header Fields Too Large",
+		444: "Connection Closed Without Response",
+		451: "Unavailable For Legal Reasons",
+		499: "Client Closed Request",
+		500: "Internal Server Error",
+		501: "Not Implemented",
+		502: "Bad Gateway",
+		503: "Service Unavailable",
+		504: "Gateway Timeout",
+		505: "HTTP Version Not Supported",
+		506: "Variant Also Negotiates",
+		507: "Insufficient Storage",
+		508: "Loop Detected",
+		510: "Not Extended",
+		511: "Network Authentication Required",
+		599: "Network Connect Timeout Error",
+		},
+	});
+
 /**
  * hash
  *
@@ -549,12 +633,15 @@ JSON.file.database.collection = class {
 		this.file = this.db.name (this.table);
 		if (true) {
 			this.stringify = "";
-			this.data = require (this.file).data;
+			this.data = (this.require = require (this.file)).data;
 			}
 		else {
 			this.stringify = Function.fs.file_read (this.file);
 			this.data = JSON.parse (this.stringify);
 			}
+		}
+	extra () {
+		return this.require.extra;
 		}
 	get (id) {
 		var promise = function (resolve, reject) {
@@ -570,7 +657,7 @@ JSON.file.database.collection = class {
 			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
 			else data = data.offset (query.limit);
 			var total = 0;
-			resolve ({data, total});
+			resolve ({data, total, extra: this.db.require.extra});
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
