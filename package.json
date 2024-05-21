@@ -1,6 +1,6 @@
 {
 "name": "library.min.js",
-"version": "15.0.0-2",
+"version": "15.0.0-3",
 "description": "",
 "main": "package.js",
 "dependencies": {
