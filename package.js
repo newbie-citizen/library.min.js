@@ -132,6 +132,7 @@ Define.property (String, "begin", function (input = 1) { if (typeof input === "s
 Define.property (String, "end", function (input = 1) { if (typeof input === "string") return this.endsWith (input); else return this.substr (this.length - input); });
 Define.property (String, "after", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (offset + input.length); else return ""; });
 Define.property (String, "before", function (input, offset) { if ((offset = this.indexOf (input, offset)) >= 0) return this.substr (0, offset); else return ""; });
+Define.property (String, "exist", function (input, offset) { return this.includes (input, offset); });
 Define.property (String, "reverse", function () { return this.split ("").reverse ().join (""); });
 Define.property (String, "json", function (data) { if (this) return JSON.parse (this); else return data; });
 Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });

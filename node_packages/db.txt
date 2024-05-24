@@ -5,7 +5,7 @@ Router
 	name string 255
 	type string 24
 	url string [] 1024
-	path string 1024 require
+	path string 1024
 	query string {} 1024
 	content string 128
 	theme string {} 1024
@@ -21,14 +21,14 @@ Content
 	type_of string 32
 	meta string 1048576
 	tag string [] 128
-	categories string [] 128
+	category string [] 128
 
 Tag
 	reference string 128
 	key string 255
 	value string 255
 
-Categories
+Category
 	reference string 128
 	key string 255
 	value string 255
@@ -39,7 +39,6 @@ Config
 	value string 1048576
 
 IP-Address
-	reference string 128
 	ip
 	country string 255
 	region string 255
