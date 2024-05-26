@@ -362,18 +362,24 @@ Function.timezone.data = [
  * xxx://xxx.xxx.xxx/xxx
  */
 
-Define (URL, "encode", function (url, option) {
-	option = Function.option (option);
-	var query = [];
-	if (option.query) for (var i in option.query) query.push (i + "=" + option.query [i]);
-	if (query.length) url = [url, query.join ("&")].join ("?");
-	return url;
-	});
+Define (URL, "encode", function () {});
 Define (URL, "decode", function (url) { return decodeURI (url); });
 Define (URL, "get", function (url, option = {}) { if (Array.isArray (url)) url = url.join (""); return new URL.ajax (url, {method: "get", ... option}); });
 Define (URL, "post", function (url, data = {}, option = {}) { if (Array.isArray (url)) url = url.join (""); return new URL.ajax (url, {method: "post", data, ... option}); });
 Define (URL, "api", function (engine) { if (engine) return URL.api.engine = engine; else return URL.api.engine = require ("axios"); });
 Define (URL.api, "engine", null, {writable: true});
+
+Define (URL, "format", function (url, option) {
+	option = Function.option (option);
+	if (option.query) url = [url, URL.query (option.query)].join ("?");
+	return url;
+	});
+
+Define (URL, "query", function (query) {
+	var data = [];
+	for (var i in query) data.push (i + "=" + query [i]);
+	return data.join ("&");
+	});
 
 Define (URL, "ajax", class {
 	constructor (url, option = {}) {
@@ -873,6 +879,7 @@ Function.api.appwrite.database.collection = class {
 		if (data.id) if (this.id = data.id) delete data.id;
 		else this.id = Function.api.appwrite.__ID.unique ();
 		else this.id = Function.api.appwrite.__ID.unique ();
+		for (var i in data) if (typeof data [i] === "object") data [i] = JSON.stringify (data [i]);
 		this.data = data;
 		var promise = function (resolve, reject) {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
@@ -892,7 +899,7 @@ Function.api.appwrite.database.collection = class {
 		}
 	delete (query) {
 		if (typeof query === "string") this.id = query;
-		else this.id = query.id;
+		else this.id = (query = query || {}).id;
 		this.limit = query.limit || 1024;
 		var promise = function (resolve, reject) {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
@@ -919,6 +926,8 @@ Function.api.appwrite.database.collection = class {
 					}
 				}
 			if (query.equal) {
+				if (Array.isArray (query.equal)) {}
+				else if (typeof query.equal === "object") query.equal = [query.equal];
 				for (var i in query.equal) {
 					for (var x in query.equal [i]) {
 						this.query.push (Function.api.appwrite.__query.equal (x, query.equal [i][x]));
@@ -1161,6 +1170,10 @@ Define (Function.path, "separator", function (separator) { if (separator) return
 Define (Function.path, "join", function (... path) { return Function.path.api.engine.join (... path); });
 Define (Function.path, "api", function (engine) { if (engine) return Function.path.api.engine = engine; else return Function.path.api.engine = require ("path"); });
 Define (Function.path.api, "engine", null, {writable: true});
+Define (Function.path, "regex", function (path, regex) { var data = {}, key = []; var regexp = Function.path.regex.__regex (regex, key); var param = regexp.exec (path); if (param) { for (var i = 1; i < param.length; i ++) data [key [i - 1].name] = param [i]; return data; } });
+Define (Function.path.regex, "require", function (regex, match, parse, compile) { if (arguments.length) Function.path.regex.__regex = regex, Function.path.regex.__match = match, Function.path.regex.__parse = parse, Function.path.regex.__compile = compile; else return require ("path-to-regexp"); });
+Define (Function.path.regex, "api", function (engine) { if (engine) return Function.path.regex.api.engine = engine; else return Function.path.regex.api.engine = require ("path-to-regexp"); });
+Define (Function.path.regex.api, "engine", null, {writable: true});
 
 Define (Function, "fs", function () {});
 Define (Function.fs, "api", function (engine) { if (engine) return Function.fs.api.engine = engine; else return Function.fs.api.engine = require ("fs"); });
