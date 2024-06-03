@@ -879,7 +879,10 @@ Function.api.appwrite.database.collection = class {
 		if (data.id) if (this.id = data.id) delete data.id;
 		else this.id = Function.api.appwrite.__ID.unique ();
 		else this.id = Function.api.appwrite.__ID.unique ();
-		for (var i in data) if (typeof data [i] === "object") data [i] = JSON.stringify (data [i]);
+		for (var i in data) {
+			if (Array.isArray (data [i])) continue;
+			else if (typeof data [i] === "object") data [i] = JSON.stringify (data [i]);
+			}
 		this.data = data;
 		var promise = function (resolve, reject) {
 			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
@@ -1096,6 +1099,32 @@ Function.geo.initialize = function (data) {
  * xxx://xxx.xxx.xxx/xxx
  */
 
+Function.manifest = function (data) {
+	data = Function.option (data, {"name": "Manifest", "name:id": "manifest", "name:short": "Manifest"});
+	return {
+		"short_name": data ["name:short"] || "Manifest",
+		"name": data ["name"] || "Manifest",
+		"icons": [
+			{"src": "/__asset/image/favorite/" + (data ["name:id"] || "manifest") + "-192x192.png", "sizes": "192x192", "type": "image/png"},
+			{"src": "/__asset/image/favorite/" + (data ["name:id"] || "manifest") + "-512x512.png", "sizes": "512x512", "type": "image/png"},
+			],
+		"start_url": ".",
+		"display": "standalone",
+		"theme_color": "#000000",
+		"background_color": "#ffffff",
+		}
+	}
+
+Function.robot = function (data) {
+	data = (data || []).map (function (data) {
+		var result = ["User-agent: " + data.agent];
+		for (var i in data.resolve) result.push ("Allow: " + data.resolve [i]);
+		for (var i in data.reject) result.push ("Disallow: " + data.reject [i]);
+		return result;
+		});
+	return data.join ("\n");
+	}
+
 /**
  * xxx
  *
@@ -1170,7 +1199,7 @@ Define (Function.path, "separator", function (separator) { if (separator) return
 Define (Function.path, "join", function (... path) { return Function.path.api.engine.join (... path); });
 Define (Function.path, "api", function (engine) { if (engine) return Function.path.api.engine = engine; else return Function.path.api.engine = require ("path"); });
 Define (Function.path.api, "engine", null, {writable: true});
-Define (Function.path, "regex", function (path, regex) { var data = {}, key = []; var regexp = Function.path.regex.__regex (regex, key); var param = regexp.exec (path); if (param) { for (var i = 1; i < param.length; i ++) data [key [i - 1].name] = param [i]; return data; } });
+Define (Function.path, "regex", function (path, regex) { if (regex) { var data = {}, key = []; var regexp = Function.path.regex.__regex (regex, key); var param = regexp.exec (path); if (param) { for (var i = 1; i < param.length; i ++) data [key [i - 1].name] = param [i]; return data; } } });
 Define (Function.path.regex, "require", function (regex, match, parse, compile) { if (arguments.length) Function.path.regex.__regex = regex, Function.path.regex.__match = match, Function.path.regex.__parse = parse, Function.path.regex.__compile = compile; else return require ("path-to-regexp"); });
 Define (Function.path.regex, "api", function (engine) { if (engine) return Function.path.regex.api.engine = engine; else return Function.path.regex.api.engine = require ("path-to-regexp"); });
 Define (Function.path.regex.api, "engine", null, {writable: true});
@@ -1279,6 +1308,7 @@ Define (Function, "window", function () {
 
 Define (Function, "document", function () {
 	document.url = URL.parse_url (document.base_url = window.location.href.toString ());
+	document.url.reload = function () { window.location.reload (); }
 	});
 
 /**

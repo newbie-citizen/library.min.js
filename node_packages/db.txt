@@ -8,7 +8,7 @@ Router
 	path string 1024
 	query string {} 1024
 	content string 128
-	theme string {} 1024
+	meta string {} 8192
 
 Content
 	reference string 128
