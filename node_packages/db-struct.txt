@@ -1,0 +1,74 @@
+Account
+	reference string 128
+	user string 255 require
+	password string 1024 require
+	type string 32
+	type_of string 32
+
+Router
+	reference string 128
+	name string 255
+	url string [] 1024
+	path string 1024
+	query string {} 1024
+	param string {} 1024
+	slot string 128
+	meta string {} 1024
+	description string 1024
+
+Content
+	reference string 128
+	name string 255
+	title string 255
+	sub_title string 255
+	head string 16384
+	body string 1048576
+	type string 32
+	type_of string 32
+	tag string [] 128
+	category string [] 128
+	slot string 128
+	meta string 1048576
+	description string 1024
+
+Config
+	reference string 128
+	key string 255 require
+	value string 1048576
+
+Taxonomy
+	reference string 128
+	name string 255
+	key string 255
+	value string 1024
+	type string 32
+	type_of string 32
+	sequence number
+	description string 1024
+
+IP-Address
+	reference string 128
+	ip
+	country string 255
+	region string 255
+	city string 255
+	data string 1048576
+
+Visitor
+	reference string 128
+	ip
+	country string 255
+	region string 255
+	city string 255
+	data string 1048576
+
+Geo-Graphy
+	reference string 128
+	name string 255
+	code string 255
+	key string 255
+	value string 1024
+	type string 32
+	type_of string 32
+	meta string 1024
+	description string 1024

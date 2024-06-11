@@ -76,8 +76,9 @@ Define (Object, "to_number", function (input) { if (Object.is_set (input)) retur
 Define (Object, "length", function (object) { var length = 0; for (var i in object) length ++; return length; });
 Define (Object, "clone", function (object) { return JSON.parse (JSON.stringify (object)); });
 Define (Object, "exclude", function (object, exclude) { var data = Object.clone (object); for (var i in exclude) delete data [exclude [i]]; return data; });
-Define (Object, "key", function () {}); Define (Object.key, "convert", function (object, key) { var data = object, split = key.split ("."); for (var i in split) data = data [split [i]]; return data; });
+Define (Object, "key", function (object) { return Object.keys (object); }); Define (Object.key, "convert", function (object, key) { var data = object, split = key.split ("."); for (var i in split) data = data [split [i]]; return data; });
 Define (Object, "value", Object.values);
+Define (Object, "delimiter", function (key, value, delimiter) { return key + (delimiter || "=") + value; });
 
 /**
  * array
@@ -147,6 +148,7 @@ Define (String, "char", {
 	alpha: {numeric: "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"},
 	space: " ",
 	underscore: "_",
+	c: ":",
 	separator: {eol: "; ", coma: ", ", c: ": "},
 	});
 
@@ -663,8 +665,9 @@ JSON.file.database.collection = class {
 			if (query.sort) data = data.order_by (... query.sort);
 			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
 			else data = data.offset (query.limit);
-			var total = 0;
-			resolve ({data, total, extra: this.db.require.extra});
+			var total = data.length;
+			if (total) resolve ({data, total});
+			else reject ({code: 404, message: "not-found"});
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
