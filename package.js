@@ -373,6 +373,7 @@ Define (URL.api, "engine", null, {writable: true});
 
 Define (URL, "format", function (url, option) {
 	option = Function.option (option);
+	if (option.protocol) url = [option.protocol, "://", url];
 	if (option.query) url = [url, URL.query (option.query)].join ("?");
 	return url;
 	});
@@ -640,13 +641,18 @@ JSON.file.database.collection = class {
 		this.collection = collection;
 		this.table = this.db.table [this.collection] || this.collection;
 		this.file = this.db.name (this.table);
-		if (true) {
-			this.stringify = "";
-			this.data = (this.require = require (this.file)).data;
+		try {
+			if (true) {
+				this.stringify = "";
+				this.data = (this.require = require (this.file)).data;
+				}
+			else {
+				this.stringify = Function.fs.file_read (this.file);
+				this.data = JSON.parse (this.stringify);
+				}
 			}
-		else {
-			this.stringify = Function.fs.file_read (this.file);
-			this.data = JSON.parse (this.stringify);
+		catch (e) {
+			this.e = true;
 			}
 		}
 	extra () {
@@ -660,14 +666,14 @@ JSON.file.database.collection = class {
 		}
 	select (query = {}) {
 		var promise = function (resolve, reject) {
-			var data = this.db.data.filter (function (data) { if (data.id) return true; else return false; });
+			if (this.db.e) reject ({code: 404, message: "not-found", collection: this.db.collection});
+			var data = this.db.data.filter (function (data) { if ("id" in data) return true; else return false; });
 			if (query.equal) data = data.select (query.equal);
 			if (query.sort) data = data.order_by (... query.sort);
 			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
 			else data = data.offset (query.limit);
 			var total = data.length;
-			if (total) resolve ({data, total});
-			else reject ({code: 404, message: "not-found"});
+			resolve ({data, total});
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
@@ -818,7 +824,7 @@ Define (Function, "plugin", function () {});
 
 Define (Function, "api", function () {});
 
-Function.api.appwrite = class {
+Function.appwrite = class {
 	constructor (config) {
 		if (config) {
 			this.config = config;
@@ -831,27 +837,27 @@ Function.api.appwrite = class {
 		this.socket = this.config.socket;
 		this.project = {id: this.config.project}
 		this ["data:base"] = this.config.db;
-		this.client = new Function.api.appwrite.__client ().setEndpoint (this.url).setEndpointRealtime (this.socket).setProject (this.project.id);
-		this.db = new Function.api.appwrite.database (this, this ["data:base"]);
+		this.client = new Function.appwrite.__client ().setEndpoint (this.url).setEndpointRealtime (this.socket).setProject (this.project.id);
+		this.db = new Function.appwrite.database (this, this ["data:base"]);
 		}
 	database (db) {
-		return new Function.api.appwrite.database (this, db);
+		return new Function.appwrite.database (this, db);
 		}
 	}
 
-Function.api.appwrite.database = class {
+Function.appwrite.database = class {
 	constructor (appwrite, db) {
 		this.appwrite = appwrite;
-		this.client = new Function.api.appwrite.__database (this.appwrite.client);
+		this.client = new Function.appwrite.__database (this.appwrite.client);
 		this.name = db;
 		this.snapshot = [];
 		}
 	collection (collection) {
-		return new Function.api.appwrite.database.collection (this.appwrite, this, collection);
+		return new Function.appwrite.database.collection (this.appwrite, this, collection);
 		}
 	}
 
-Function.api.appwrite.database.collection = class {
+Function.appwrite.database.collection = class {
 	constructor (appwrite, db, collection) {
 		this.appwrite = appwrite;
 		this.db = db;
@@ -864,7 +870,7 @@ Function.api.appwrite.database.collection = class {
 		}
 	get (id) {
 		var promise = function (resolve, reject) {
-			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			var doc = Function.appwrite.database.document.bind ({context: resolve});
 			this.db.client.getDocument (this.db.name, this.db.table, id).then (doc, reject);
 			}
 		return new Promise.context (promise.bind ({db: this}));
@@ -872,7 +878,7 @@ Function.api.appwrite.database.collection = class {
 	select (query) {
 		this.queries (query);
 		var promise = function (resolve, reject) {
-			var doc = Function.api.appwrite.database.document.array.bind ({context: resolve});
+			var doc = Function.appwrite.database.document.array.bind ({context: resolve});
 			if (this.db.query.length) this.db.client.listDocuments (this.db.name, this.db.table, this.db.query).then (doc, reject);
 			else this.db.client.listDocuments (this.db.name, this.db.table).then (doc, reject);
 			}
@@ -880,15 +886,15 @@ Function.api.appwrite.database.collection = class {
 		}
 	insert (data) {
 		if (data.id) if (this.id = data.id) delete data.id;
-		else this.id = Function.api.appwrite.__ID.unique ();
-		else this.id = Function.api.appwrite.__ID.unique ();
+		else this.id = Function.appwrite.__ID.unique ();
+		else this.id = Function.appwrite.__ID.unique ();
 		for (var i in data) {
 			if (Array.isArray (data [i])) continue;
 			else if (typeof data [i] === "object") data [i] = JSON.stringify (data [i]);
 			}
 		this.data = data;
 		var promise = function (resolve, reject) {
-			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			var doc = Function.appwrite.database.document.bind ({context: resolve});
 			this.db.client.createDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
 			}
 		return new Promise.context (promise.bind ({db: this}));
@@ -898,7 +904,7 @@ Function.api.appwrite.database.collection = class {
 		else this.id = query.id;
 		this.data = data;
 		var promise = function (resolve, reject) {
-			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			var doc = Function.appwrite.database.document.bind ({context: resolve});
 			this.db.client.updateDocument (this.db.name, this.db.table, this.db.id, this.db.data).then (doc, reject);
 			}
 		return new Promise.context (promise.bind ({db: this}));
@@ -908,18 +914,18 @@ Function.api.appwrite.database.collection = class {
 		else this.id = (query = query || {}).id;
 		this.limit = query.limit || 1024;
 		var promise = function (resolve, reject) {
-			var doc = Function.api.appwrite.database.document.bind ({context: resolve});
+			var doc = Function.appwrite.database.document.bind ({context: resolve});
 			if (this.db.id) this.db.client.deleteDocument (this.db.name, this.db.table, this.db.id).then (doc, reject);
-			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.api.appwrite.__query.limit (this.db.limit)]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
+			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.appwrite.__query.limit (this.db.limit)]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
 	queries (query = {}) {
-		if (typeof query === "string") this.query.push (Function.api.appwrite.__query.equal ("$id", query));
+		if (typeof query === "string") this.query.push (Function.appwrite.__query.equal ("$id", query));
 		else {
-			if (query.id) this.query.push (Function.api.appwrite.__query.equal ("$id", query.id));
-			if (query.limit) this.query.push (Function.api.appwrite.__query.limit (query.limit));
-			if (query.offset) this.query.push (Function.api.appwrite.__query.offset (query.offset));
+			if (query.id) this.query.push (Function.appwrite.__query.equal ("$id", query.id));
+			if (query.limit) this.query.push (Function.appwrite.__query.limit (query.limit));
+			if (query.offset) this.query.push (Function.appwrite.__query.offset (query.offset));
 			if (query.sort) {
 				for (var i in query.sort) {
 					for (var x in query.sort [i]) {
@@ -936,7 +942,7 @@ Function.api.appwrite.database.collection = class {
 				else if (typeof query.equal === "object") query.equal = [query.equal];
 				for (var i in query.equal) {
 					for (var x in query.equal [i]) {
-						this.query.push (Function.api.appwrite.__query.equal (x, query.equal [i][x]));
+						this.query.push (Function.appwrite.__query.equal (x, query.equal [i][x]));
 						}
 					}
 				}
@@ -944,9 +950,9 @@ Function.api.appwrite.database.collection = class {
 		}
 	}
 
-Function.api.appwrite.database.document = function (data) { this.context (Function.api.appwrite.database.doc (data)); }
-Function.api.appwrite.database.document.array = function (data) { this.context ({total: data.total, data: data.documents.map (function (data) { return Function.api.appwrite.database.doc (data); })}); }
-Function.api.appwrite.database.doc = function (data) {
+Function.appwrite.database.document = function (data) { this.context (Function.appwrite.database.doc (data)); }
+Function.appwrite.database.document.array = function (data) { this.context ({total: data.total, data: data.documents.map (function (data) { return Function.appwrite.database.doc (data); })}); }
+Function.appwrite.database.doc = function (data) {
 	data.id = data.$id;
 	data.stamp = {
 		insert: new Date (data.$createdAt).getTime (),
@@ -957,12 +963,12 @@ Function.api.appwrite.database.doc = function (data) {
 	return data;
 	}
 
-Function.api.appwrite.require = function (client, database, query, ID) {
+Function.appwrite.require = function (client, database, query, ID) {
 	if (arguments.length) {
-		Function.api.appwrite.__client = client;
-		Function.api.appwrite.__database = database;
-		Function.api.appwrite.__query = query;
-		Function.api.appwrite.__ID = ID;
+		Function.appwrite.__client = client;
+		Function.appwrite.__database = database;
+		Function.appwrite.__query = query;
+		Function.appwrite.__ID = ID;
 		}
 	else return require ("appwrite");
 	}
@@ -1126,6 +1132,75 @@ Function.robot = function (data) {
 		return result;
 		});
 	return data.join ("\n");
+	}
+
+Function.sitemap = function () {}
+Function ["sitemap.xsl"] = null;
+Function.sitemap.xsl = function (key, value) { if (key === "path") return Function ["sitemap.xsl"] = value; }
+Function.sitemap.xml = function (data, option) {
+	var xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
+	if (option.style === "sheet") {
+		if (option.index) xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl"] + '?type=index"?>');
+		else xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl"] + '"?>');
+		}
+	if (option.index) {
+		xml.push ('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+		for (var i in data) {
+			xml.push ('\t<sitemap>');
+			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
+			xml.push ('\t\t<lastmod>' + Function.sitemap.last_modified (data [i].last_modified) + '</lastmod>');
+			xml.push ('\t</sitemap>');
+			}
+		xml.push ('</sitemapindex>');
+		}
+	else if (option.type === "post") {
+		xml.push ('<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+		for (var i in data) {
+			xml.push ('\t<url>');
+			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
+			xml.push ('\t\t<news:news>');
+			xml.push ('\t\t\t<news:publication>');
+			xml.push ('\t\t\t\t<news:name>' + data [i].name + '</news:name>');
+			xml.push ('\t\t\t\t<news:language>' + (data [i].language || "en") + '</news:language>');
+			xml.push ('\t\t\t</news:publication>');
+			xml.push ('\t\t\t<news:publication_date>' + Function.sitemap.last_modified (data [i].last_modified) + '</news:publication_date>');
+			xml.push ('\t\t\t<news:title>');
+			xml.push ('\t\t\t\t<![CDATA[ ' + (data [i].title || "Untitled") + ' ]]>');
+			xml.push ('\t\t\t</news:title>');
+			xml.push ('\t\t\t<news:keywords>');
+			xml.push ('\t\t\t\t<![CDATA[ ' + data [i].keyword + ' ]]>');
+			xml.push ('\t\t\t</news:keywords>');
+			xml.push ('\t\t</news:news>');
+			xml.push ('\t</url>');
+			}
+		xml.push ('</urlset>');
+		}
+	else {
+		xml.push ('<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+		for (var i in data) {
+			xml.push ('\t<url>');
+			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
+			xml.push ('\t\t<lastmod>' + Function.sitemap.last_modified (data [i].last_modified) + '</lastmod>');
+			xml.push ('\t\t<priority>' + (data [i].priority || "1.0") + '</priority>');
+			if (data [i].image) {
+				xml.push ('\t\t<image:image>');
+				xml.push ('\t\t\t<image:loc>' + "" + '</image:loc>');
+				xml.push ('\t\t</image:image>');
+				}
+			xml.push ('\t</url>');
+			}
+		xml.push ('</urlset>');
+		}
+	return xml.join ("\n");
+	}
+
+Function.sitemap.last_modified = function () {
+	var last_modified_date = ["2022", "02", "02"];
+	var last_modified_time = ["02", "02", "02"];
+	var last_modified_zone = ["00", "00"];
+	var last_modified = [last_modified_date.join ("-"), last_modified_time.join (":")].join ("T");
+	last_modified = [last_modified, last_modified_zone.join (":")].join ("+");
+	return last_modified;
 	}
 
 /**
@@ -1331,12 +1406,13 @@ Symbol.library = {
 	data: Function.data, hash: Function.hash, xml: Function.xml, serialize: Function.serialize, json: JSON,
 	dom: Function.dom,
 	char: String.char, is_boolean: Object.is_boolean, is_object: Object.is_object, is_array: Object.is_array, is_string: Object.is_string, is_number: Object.is_number, is_nan: Object.is_nan, is_integer: Object.is_integer, is_finite: Object.is_finite, is_float: Object.is_float, is_function: Object.is_function, is_date: Object.is_date, is_regex: Object.is_regex, is_null: Object.is_null, is_set: Object.is_set, is_define: Object.is_define, un_define: Object.un_define, un_set: Object.un_set,
-	plugin: Function.plugin, api: Function.api,
+	plugin: Function.plugin, api: Function.api, firebase: Function.firebase, appwrite: Function.appwrite,
 	ip: Function.ip, geo: Function.geo,
 	path: Function.path, fs: Function.fs,
 	window: Function.window, document: Function.document,
 	express: Function.express, angular: Function.angular, vue: Function.vue,
 	help: Function.help, current: Function.current,
+	manifest: Function.manifest, robot: Function.robot, sitemap: Function.sitemap, "sitemap.xsl": Function ["sitemap.xsl"],
 	}
 
 /**

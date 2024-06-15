@@ -7,22 +7,22 @@ Account
 
 Router
 	reference string 128
-	name string 255
 	url string [] 1024
 	path string 1024
 	query string {} 1024
 	param string {} 1024
+	key string 255
 	slot string 128
 	meta string {} 1024
 	description string 1024
 
 Content
 	reference string 128
-	name string 255
 	title string 255
 	sub_title string 255
 	head string 16384
-	body string 1048576
+	key string 255
+	value string 1048576
 	type string 32
 	type_of string 32
 	tag string [] 128
