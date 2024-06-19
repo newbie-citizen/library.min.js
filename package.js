@@ -138,7 +138,20 @@ Define.property (String, "reverse", function () { return this.split ("").reverse
 Define.property (String, "json", function (data) { if (this) return JSON.parse (this); else return data; });
 Define.property (String, "to_split", function (separator = " ", offset = 1) { var data = [], count = 0; for (var i in this) { data.push (this [i]), count ++; if (count >= offset) data.push (separator), count = 0; } if ((data = data.join ("")).endsWith (separator)) data = data.substr (0, data.length - separator.length); return data; });
 Define.property (String, "to_replace", function (key, value) { if (typeof key === "object") { var data = this.concat (""); for (var i in key) { if (value) if (value.exclude) if (value.exclude.includes (i)) continue; else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); else data = data.split ("{{ " + i + " }}").join (key [i]); } return data; } else return this.split (key).join (value); });
-Define.property (String, "to_param", function (param) { var data = this.toString (); for (var i in param) data = data.to_replace (":" + i, param [i]); return data; });
+Define.property (String, "to_param", function (param) {
+// var data = this.toString ();
+// for (var i in param) data = data.to_replace (":" + i, param [i]);
+// return data;
+var data = this.toString ();
+for (var i in param) {
+	var value = param [i];
+	var key = ":" + i;
+	var index = data.indexOf (key);
+	var length = index + key.length;
+	data = data.substr (0, index) + value + data.substr (length);
+	}
+return data;
+});
 Define.property (String, "print_format", function (... format) { var data = this.split ("%s"); var index = - 1; for (var i in format) { index += 2; data.splice (index, 0, format [i]); } return data.join (""); });
 Define.property (String, "descriptor", "function");
 
@@ -195,7 +208,28 @@ Define (Number.float, "separator", (1 / 2).toString ().substr (1, 1));
 Define.property (Function, "string", function () { return this.toString (); });
 
 Define (Function, "context", function (context) { return context || function () {} });
-Define (Function, "option", function (option) { return option || {} });
+Define (Function, "option", function (option, value) { return Object.assign (value || {}, option); });
+
+Define (Function, "query", function () {});
+Define (Function.query, "limit", function (limit) {
+	if (arguments.length) {
+		if (limit === "default") return 1024;
+		else if (limit === "medium") return 10000;
+		else if (limit === "large") return 100000;
+		else return limit;
+		}
+	else return 1000000;
+	});
+
+/**
+ * promise
+ *
+ * title
+ * description
+ * sub description
+ *
+ * xxx://xxx.xxx.xxx/xxx
+ */
 
 Define (Promise, "context", class {
 	constructor (promise) {
@@ -375,7 +409,7 @@ Define (URL, "format", function (url, option) {
 	option = Function.option (option);
 	if (option.protocol) url = [option.protocol, "://", url];
 	if (option.query) url = [url, URL.query (option.query)].join ("?");
-	return url;
+	return url.join ("");
 	});
 
 Define (URL, "query", function (query) {
@@ -431,6 +465,7 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 			query: {},
 			tag: parse.hash,
 			}
+		parse_url.domain.sub = parse_url.domain.sub || "www";
 		if (option.x) {}
 		else {
 			parse_url ["cross-origin"] = false
@@ -477,7 +512,13 @@ Define (URL.domain, "sort", function (domain) {
 	return [... sub, ... tld];
 	});
 
-Define (URL.domain, "data", URL.domain.sort ([".com", ".net", ".org", ".info", ".io", ".app", ".xxx"]), {writable: true});
+Define (URL.domain, "data", URL.domain.sort ([
+	".com", ".net", ".org", ".info",
+	".io", ".app", ".site", ".blog", ".cloud", ".space", ".ninja",
+	".co",
+	".xxx", ".xyz",
+	".local", ".tmp",
+	]), {writable: true});
 
 Define (URL, "protocol", {
 	scheme: {"http": "http://", "http:secure": "https://"},
@@ -605,7 +646,7 @@ Define (Function, "xml", function () {});
 Define (Function, "serialize", function () {});
 
 Define (JSON, "encode", function (data) { return JSON.stringify (data); });
-Define (JSON, "decode", function (data, value) { if (data) return JSON.parse (data); else return value; });
+Define (JSON, "decode", function (data, value) { if (Object.is_array (data)) return data; else if (Object.is_object (data)) return data; else if (data) return JSON.parse (data); else return value; });
 
 JSON.file = class {
 	constructor (config) {
@@ -670,8 +711,8 @@ JSON.file.database.collection = class {
 			var data = this.db.data.filter (function (data) { if ("id" in data) return true; else return false; });
 			if (query.equal) data = data.select (query.equal);
 			if (query.sort) data = data.order_by (... query.sort);
-			if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
-			else data = data.offset (query.limit);
+			if (query.limit) if (query.offset) data = data.offset (query.offset, Function.query.limit (query.limit));
+			else data = data.offset (Function.query.limit (query.limit));
 			var total = data.length;
 			resolve ({data, total});
 			}
@@ -744,8 +785,8 @@ JSON.bin.database.collection = class {
 				var data = respond.data.select (query);
 				if (query.equal) data = data.select (query.equal);
 				if (query.sort) data = data.order_by (... query.sort);
-				if (query.limit) if (query.offset) data = data.offset (query.offset, query.limit);
-				else data = data.offset (query.limit);
+				if (query.limit) if (query.offset) data = data.offset (query.offset, Function.query.limit (query.limit));
+				else data = data.offset (Function.query.limit (query.limit));
 				var total = 0;
 				resolve ({data, total});
 				});
@@ -924,7 +965,7 @@ Function.appwrite.database.collection = class {
 		if (typeof query === "string") this.query.push (Function.appwrite.__query.equal ("$id", query));
 		else {
 			if (query.id) this.query.push (Function.appwrite.__query.equal ("$id", query.id));
-			if (query.limit) this.query.push (Function.appwrite.__query.limit (query.limit));
+			if (query.limit) this.query.push (Function.appwrite.__query.limit (Function.query.limit (query.limit)));
 			if (query.offset) this.query.push (Function.appwrite.__query.offset (query.offset));
 			if (query.sort) {
 				for (var i in query.sort) {
@@ -1108,67 +1149,78 @@ Function.geo.initialize = function (data) {
  * xxx://xxx.xxx.xxx/xxx
  */
 
-Function.manifest = function (data) {
-	data = Function.option (data, {"name": "Manifest", "name:id": "manifest", "name:short": "Manifest"});
+Function.manifest = function () {}
+Function.manifest.json = function (data) {
+	data = Function.option (data, {
+		"icon": ["192x192.png", "512x512.png"],
+		"url:start": ".",
+		"display": "standalone",
+		"theme:color": "#000000",
+		"background:color": "#ffffff",
+		});
 	return {
-		"short_name": data ["name:short"] || "Manifest",
+		"short_name": data ["channel"] || "Manifest",
 		"name": data ["name"] || "Manifest",
 		"icons": [
-			{"src": "/__asset/image/favorite/" + (data ["name:id"] || "manifest") + "-192x192.png", "sizes": "192x192", "type": "image/png"},
-			{"src": "/__asset/image/favorite/" + (data ["name:id"] || "manifest") + "-512x512.png", "sizes": "512x512", "type": "image/png"},
+			{"src": data ["icon"][0], "sizes": "192x192", "type": "image/png"},
+			{"src": data ["icon"][1], "sizes": "512x512", "type": "image/png"},
 			],
-		"start_url": ".",
-		"display": "standalone",
-		"theme_color": "#000000",
-		"background_color": "#ffffff",
+		"start_url": data ["url:start"],
+		"display": data ["display"],
+		"theme_color": data ["theme:color"],
+		"background_color": data ["background:color"],
 		}
 	}
 
-Function.robot = function (data) {
+Function.robot = function () {}
+Function.robot.txt = function (data, sitemap) {
 	data = (data || []).map (function (data) {
-		var result = ["User-agent: " + data.agent];
-		for (var i in data.resolve) result.push ("Allow: " + data.resolve [i]);
-		for (var i in data.reject) result.push ("Disallow: " + data.reject [i]);
-		return result;
+		var robot = ["User-agent: " + data.agent];
+		for (var i in data.resolve) robot.push ("Allow: " + data.resolve [i]);
+		for (var i in data.reject) robot.push ("Disallow: " + data.reject [i]);
+		return robot.join ("\n");
 		});
-	return data.join ("\n");
+	if (sitemap) {
+		var robot = [];
+		for (var i in sitemap) robot.push ("Sitemap: " + sitemap [i]);
+		data.push (robot.join ("\n"));
+		}
+	return data.join ("\n\n");
 	}
 
 Function.sitemap = function () {}
-Function ["sitemap.xsl"] = null;
-Function.sitemap.xsl = function (key, value) { if (key === "path") return Function ["sitemap.xsl"] = value; }
+Function.sitemap.frequency = {daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly"}
 Function.sitemap.xml = function (data, option) {
 	var xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
-	if (option.style === "sheet") {
-		if (option.index) xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl"] + '?type=index"?>');
-		else xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl"] + '"?>');
-		}
-	if (option.index) {
+	if (option.type === "index") {
+		xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl:index"] + '?feature=priority:frequency"?>');
 		xml.push ('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
 		for (var i in data) {
 			xml.push ('\t<sitemap>');
 			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
 			xml.push ('\t\t<lastmod>' + Function.sitemap.last_modified (data [i].last_modified) + '</lastmod>');
+			xml.push ('\t\t<priority>' + (data [i].priority || "") + '</priority>');
+			xml.push ('\t\t<changefreq>' + (Function.sitemap.frequency [data [i].change_frequency] || "") + '</changefreq>');
 			xml.push ('\t</sitemap>');
 			}
 		xml.push ('</sitemapindex>');
 		}
-	else if (option.type === "post") {
-		xml.push ('<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+	else if (option.type === "news") {
+		xml.push ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">');
 		for (var i in data) {
 			xml.push ('\t<url>');
 			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
 			xml.push ('\t\t<news:news>');
 			xml.push ('\t\t\t<news:publication>');
 			xml.push ('\t\t\t\t<news:name>' + data [i].name + '</news:name>');
-			xml.push ('\t\t\t\t<news:language>' + (data [i].language || "en") + '</news:language>');
+			xml.push ('\t\t\t\t<news:language>' + (data [i].language || "") + '</news:language>');
 			xml.push ('\t\t\t</news:publication>');
 			xml.push ('\t\t\t<news:publication_date>' + Function.sitemap.last_modified (data [i].last_modified) + '</news:publication_date>');
 			xml.push ('\t\t\t<news:title>');
-			xml.push ('\t\t\t\t<![CDATA[ ' + (data [i].title || "Untitled") + ' ]]>');
+			xml.push ('\t\t\t\t<![CDATA[ ' + (data [i].title || "") + ' ]]>');
 			xml.push ('\t\t\t</news:title>');
 			xml.push ('\t\t\t<news:keywords>');
-			xml.push ('\t\t\t\t<![CDATA[ ' + data [i].keyword + ' ]]>');
+			xml.push ('\t\t\t\t<![CDATA[ ' + (data [i].keyword || "") + ' ]]>');
 			xml.push ('\t\t\t</news:keywords>');
 			xml.push ('\t\t</news:news>');
 			xml.push ('\t</url>');
@@ -1176,15 +1228,18 @@ Function.sitemap.xml = function (data, option) {
 		xml.push ('</urlset>');
 		}
 	else {
-		xml.push ('<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+		xml.push ('<?xml-stylesheet type="text/xsl" href="' + Function ["sitemap.xsl"] + '"?>');
+		xml.push ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">');
 		for (var i in data) {
 			xml.push ('\t<url>');
 			xml.push ('\t\t<loc>' + data [i].url + '</loc>');
 			xml.push ('\t\t<lastmod>' + Function.sitemap.last_modified (data [i].last_modified) + '</lastmod>');
-			xml.push ('\t\t<priority>' + (data [i].priority || "1.0") + '</priority>');
+			if (data [i].priority) xml.push ('\t\t<priority>' + data [i].priority + '</priority>');
 			if (data [i].image) {
 				xml.push ('\t\t<image:image>');
-				xml.push ('\t\t\t<image:loc>' + "" + '</image:loc>');
+				xml.push ('\t\t\t<image:loc>' + data [i].image.url + '</image:loc>');
+				if (data [i].image.title) xml.push ('\t\t\t<image:title>' + data [i].image.title + '</image:title>');
+				if (data [i].image.caption) xml.push ('\t\t\t<image:caption>' + data [i].image.caption + '</image:caption>');
 				xml.push ('\t\t</image:image>');
 				}
 			xml.push ('\t</url>');
@@ -1194,9 +1249,78 @@ Function.sitemap.xml = function (data, option) {
 	return xml.join ("\n");
 	}
 
-Function.sitemap.last_modified = function () {
-	var last_modified_date = ["2022", "02", "02"];
-	var last_modified_time = ["02", "02", "02"];
+Function ["sitemap.xsl"] = null;
+Function ["sitemap.xsl:index"] = null;
+Function.sitemap.xsl = function (key, value) {
+	if ((key = key || {}) === "path") return Function ["sitemap.xsl"] = value;
+	if ((key = key || {}) === "path:index") return Function ["sitemap.xsl:index"] = value;
+	key.client = key.client || {}
+	key.generator = key.generator || {name: "Newbie Citizen", channel: "NEWBIZEN", url: "https://developer.newbizen.com"}
+	key.generator = key.generator.name || {name: "Newbie Citizen", channel: "NEWBIZEN", url: "https://developer.newbizen.com"}
+	var xsl = ['<?xml version="1.0" encoding="UTF-8"?>'];
+	xsl.push ('<xsl:stylesheet version="2.0" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">');
+	xsl.push ('\t<xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>');
+	xsl.push ('\t<xsl:template match="/">');
+	xsl.push ('\t\t<html xmlns="http://www.w3.org/1999/xhtml">');
+	xsl.push ('\t\t\t<head>');
+	xsl.push ('\t\t\t\t<title>XML SiteMap Index</title>');
+	xsl.push ('\t\t\t\t<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>');
+	xsl.push ('\t\t\t\t<style type="text/css">body { font: 14px "Roboto", "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; } a { color: #3498db; text-decoration: none; } h1 { margin: 0; } #description { background-color: #f1f1f1; color: #333333; padding: 30px 30px 20px; } #description a { color: #008710; } #content { padding: 10px 30px 30px; background: #fff; } a:hover { border-bottom: 1px solid; } th, td { font-size: 12px; } th { text-align: left; border-bottom: 1px solid #ccc; } th, td { padding: 10px 15px; } .odd { background: linear-gradient(159.87deg, #f6f6f4 7.24%, #f7f4ea 64.73%, #ddedd5 116.53%); } #footer { margin: 20px 30px; font-size: 12px; color: #999; } #footer a { color: inherit; } #description a, #footer a { border-bottom: 1px solid; } img { max-height: 100px; max-width: 100px; }</style>');
+	xsl.push ('\t\t\t</head>');
+	xsl.push ('\t\t\t<body>');
+	xsl.push ('\t\t\t\t<div id="description">');
+	xsl.push ('\t\t\t\t\t<h1>XML SiteMap Index</h1>');
+	xsl.push ('\t\t\t\t\t<xsl:choose><xsl:when test="not(sitemap:sitemapindex/sitemap:sitemap)"><p><strong></strong></p></xsl:when></xsl:choose>');
+	xsl.push ('\t\t\t\t\t<p>This is an XML SiteMap Index generated by <a href="' + key.generator.url + '">' + key.generator.channel + '</a>, meant to be consumed by search engine\'s like <a href="https://www.google.com">Google</a> or <a href="https://www.bing.com">Bing</a>.</p>');
+	xsl.push ('\t\t\t\t\t<p>You can find more information on XML sitemap\'s at <a href="https://sitemaps.org">sitemaps.org</a></p>');
+	xsl.push ('\t\t\t\t</div>');
+	xsl.push ('\t\t\t\t<div id="content">');
+	xsl.push ('\t\t\t\t\t<table>');
+	xsl.push ('\t\t\t\t\t\t<tr>');
+	xsl.push ('\t\t\t\t\t\t\t<th>#</th>');
+	xsl.push ('\t\t\t\t\t\t\t<th>URL</th>');
+	if (key.extra) {
+		xsl.push ('\t\t\t\t\t\t\t<th>Priority</th>');
+		xsl.push ('\t\t\t\t\t\t\t<th>Change Frequency</th>');
+		}
+	xsl.push ('\t\t\t\t\t\t\t<th>Last Modified</th>');
+	xsl.push ('\t\t\t\t\t\t</tr>');
+	if (key.index) xsl.push ('\t\t\t\t\t\t<xsl:for-each select="sitemap:sitemapindex/sitemap:sitemap">');
+	else xsl.push ('\t\t\t\t\t\t<xsl:for-each select="sitemap:urlset/sitemap:url">');
+	xsl.push ('\t\t\t\t\t\t\t<tr>');
+	xsl.push ('\t\t\t\t\t\t\t\t<xsl:choose><xsl:when test="position() mod 2 != 1"><xsl:attribute name="class"></xsl:attribute></xsl:when></xsl:choose>');
+	xsl.push ('\t\t\t\t\t\t\t\t<td><xsl:value-of select="position()"/></td>');
+	xsl.push ('\t\t\t\t\t\t\t\t<td><xsl:variable name="itemURL"><xsl:value-of select="sitemap:loc"/></xsl:variable><a href="{$itemURL}"><xsl:value-of select="sitemap:loc"/></a></td>');
+	if (key.extra) {
+		xsl.push ('\t\t\t\t\t\t\t\t<td><xsl:value-of select="sitemap:priority"/></td>');
+		xsl.push ('\t\t\t\t\t\t\t\t<td><xsl:value-of select="sitemap:changefreq"/></td>');
+		}
+	xsl.push ('\t\t\t\t\t\t\t\t<td><xsl:value-of select="sitemap:lastmod"/></td>');
+	xsl.push ('\t\t\t\t\t\t\t</tr>');
+	xsl.push ('\t\t\t\t\t\t</xsl:for-each>');
+	xsl.push ('\t\t\t\t\t</table>');
+	xsl.push ('\t\t\t\t</div>');
+	xsl.push ('\t\t\t\t<div id="footer">');
+	if (key.client.name) xsl.push ('\t\t\t\t\t<p>Generated by <a href="' + key.generator.url + '">' + key.generator.name + '</a> for ' + key.client.name + '</p>');
+	else xsl.push ('\t\t\t\t\t<p>Generated by <a href="' + key.generator.url + '">' + key.generator.name + '</a></p>');
+	xsl.push ('\t\t\t\t</div>');
+	xsl.push ('\t\t\t</body>');
+	xsl.push ('\t\t</html>');
+	xsl.push ('\t</xsl:template>');
+	xsl.push ('</xsl:stylesheet>');
+	return xsl.join ('\n');
+	}
+
+Function.sitemap.last_modified = function (stamp) {
+	var date = new Date (stamp || Date.now ());
+	var year = date.getUTCFullYear ().toString ();
+	var month = date.getUTCMonth ().toString ().padStart (2, "0");
+	var day = date.getUTCDate ().toString ().padStart (2, "0");
+	var hour = date.getUTCHours ().toString ().padStart (2, "0");
+	var minute = date.getUTCMinutes ().toString ().padStart (2, "0");
+	var second = date.getUTCSeconds ().toString ().padStart (2, "0");
+	var last_modified_date = [year, month, day];
+	var last_modified_time = [hour, minute, second];
 	var last_modified_zone = ["00", "00"];
 	var last_modified = [last_modified_date.join ("-"), last_modified_time.join (":")].join ("T");
 	last_modified = [last_modified, last_modified_zone.join (":")].join ("+");
@@ -1257,6 +1381,9 @@ Function.help = function () {}
 Function.help.timezone = function (timezone) { timezone = timezone || ""; if (timezone.includes (":")) return timezone; else return timezone.to_split (":", 3); }
 Function.help.host = function () {}
 Function.help.host.check = function (host, check) { return host.endsWith ("/" + check) || host.endsWith ("." + check) || ("#" + host).endsWith ("#" + check); }
+Function.help.taxonomy = function () {}
+Function.help.taxonomy.child = function () {}
+Function.help.taxonomy.child.recursive = function (taxonomy, request, response) { for (var i in taxonomy) if ((taxonomy [i].child = request.db.taxonomy.select ({reference: taxonomy [i].id})).length) Function.help.taxonomy.child.recursive (taxonomy [i].child, request); }
 
 Function.current = function (input) { return "./" + input; }
 
@@ -1292,6 +1419,14 @@ Define (Function.file, "extension", {
 	css: ".css",
 	js: ".js",
 	json: ".json",
+	xml: ".xml",
+	ini: ".ini",
+	image: {
+		gif: ".gif",
+		jpg: ".jpg",
+		jpeg: ".jpeg",
+		png: ".png",
+		},
 	});
 
 /**
@@ -1408,7 +1543,7 @@ Symbol.library = {
 	char: String.char, is_boolean: Object.is_boolean, is_object: Object.is_object, is_array: Object.is_array, is_string: Object.is_string, is_number: Object.is_number, is_nan: Object.is_nan, is_integer: Object.is_integer, is_finite: Object.is_finite, is_float: Object.is_float, is_function: Object.is_function, is_date: Object.is_date, is_regex: Object.is_regex, is_null: Object.is_null, is_set: Object.is_set, is_define: Object.is_define, un_define: Object.un_define, un_set: Object.un_set,
 	plugin: Function.plugin, api: Function.api, firebase: Function.firebase, appwrite: Function.appwrite,
 	ip: Function.ip, geo: Function.geo,
-	path: Function.path, fs: Function.fs,
+	path: Function.path, file: Function.file, fs: Function.fs,
 	window: Function.window, document: Function.document,
 	express: Function.express, angular: Function.angular, vue: Function.vue,
 	help: Function.help, current: Function.current,
