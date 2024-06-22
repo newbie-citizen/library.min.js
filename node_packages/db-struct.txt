@@ -7,6 +7,8 @@ Account
 
 Router
 	reference string 128
+	name string 255
+	base_url string 1024
 	url string [] 1024
 	path string 1024
 	query string {} 1024
@@ -21,6 +23,7 @@ Router
 
 Content
 	reference string 128
+	name string 255
 	title string 255
 	sub_title string 255
 	head string 16384
@@ -28,6 +31,7 @@ Content
 	value string 1048576
 	type string 32
 	type_of string 32
+	base_url string 1024
 	url string [] 1024
 	tag string [] 128
 	category string [] 128
@@ -48,8 +52,10 @@ Taxonomy
 	value string 1024
 	type string 32
 	type_of string 32
-	meta string {} 1024
+	url string 1024
+	slot string 128
 	sequence number
+	meta string {} 1024
 	description string 1024
 
 IP-Address

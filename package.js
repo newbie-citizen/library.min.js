@@ -213,7 +213,8 @@ Define (Function, "option", function (option, value) { return Object.assign (val
 Define (Function, "query", function () {});
 Define (Function.query, "limit", function (limit) {
 	if (arguments.length) {
-		if (limit === "default") return 1024;
+		if (limit === "single") return 1;
+		else if (limit === "default") return 1024;
 		else if (limit === "medium") return 10000;
 		else if (limit === "large") return 100000;
 		else return limit;
@@ -457,6 +458,7 @@ Define (URL, "parse_url", function parse_url (url, option = {}) {
 		var parse = new URL (url);
 		var parse_url = {
 			reference: parse.href,
+			referer: "",
 			protocol: parse.protocol.substr (0, parse.protocol.length - 1) || option.protocol,
 			host: {reference: "", address: parse.host, name: parse.hostname, port: parse.port},
 			domain: URL.domain.parse (parse.hostname),
@@ -1384,6 +1386,9 @@ Function.help.host.check = function (host, check) { return host.endsWith ("/" + 
 Function.help.taxonomy = function () {}
 Function.help.taxonomy.child = function () {}
 Function.help.taxonomy.child.recursive = function (taxonomy, request, response) { for (var i in taxonomy) if ((taxonomy [i].child = request.db.taxonomy.select ({reference: taxonomy [i].id})).length) Function.help.taxonomy.child.recursive (taxonomy [i].child, request); }
+Function.help.db = function () {}
+Function.help.db.child = function () {}
+Function.help.db.child.recursive = function (collection, base) { for (var i in collection) if ((collection [i].child = base.select ({reference: collection [i].id})).length) Function.help.db.child.recursive (collection [i].child, base); }
 
 Function.current = function (input) { return "./" + input; }
 
