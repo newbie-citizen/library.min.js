@@ -13,12 +13,12 @@ Router
 	path string 1024
 	query string {} 1024
 	param string {} 1024
-	type string 32
-	type_of string 32
 	key string 255
 	value string 1024
+	type string 32
+	type_of string 32
 	slot string 128
-	meta string {} 1024
+	meta string {} 4096
 	description string 1024
 
 Content
@@ -36,8 +36,9 @@ Content
 	tag string [] 128
 	category string [] 128
 	sitemap string [] 128
+	file string [] 1024
 	slot string 128
-	meta string 1048576
+	meta string 4096
 	description string 1024
 
 Config
@@ -55,7 +56,7 @@ Taxonomy
 	url string 1024
 	slot string 128
 	sequence number
-	meta string {} 1024
+	meta string {} 4096
 	description string 1024
 
 IP-Address

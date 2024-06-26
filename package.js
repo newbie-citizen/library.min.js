@@ -142,6 +142,7 @@ Define.property (String, "to_param", function (param) {
 // var data = this.toString ();
 // for (var i in param) data = data.to_replace (":" + i, param [i]);
 // return data;
+if (typeof param === "string") return this.to_replace ("*", param);
 var data = this.toString ();
 for (var i in param) {
 	var value = param [i];
@@ -668,6 +669,7 @@ JSON.file.database = class {
 	constructor (api) {
 		this.api = api;
 		this.snapshot = [];
+		this.table = {}
 		}
 	collection (collection) {
 		return new JSON.file.database.collection (this.api, this, collection);
@@ -856,7 +858,25 @@ Function.dom.style = function (style) {
 Define (Function, "plugin", function () {});
 
 /**
- * xxx
+ * db : mongo
+ *
+ * title
+ * description
+ * sub description
+ *
+ * xxx://xxx.xxx.xxx/xxx
+ */
+
+Function.mongo = function () {
+	//
+	}
+
+Function.mongo.api = function () {
+	return Function.mongo.api.engine = require ("mongodb");
+	}
+
+/**
+ * appwrite
  *
  * title
  * description
@@ -955,11 +975,11 @@ Function.appwrite.database.collection = class {
 	delete (query) {
 		if (typeof query === "string") this.id = query;
 		else this.id = (query = query || {}).id;
-		this.limit = query.limit || 1024;
+		this.limit = query.limit || Function.query.limit ("default");
 		var promise = function (resolve, reject) {
 			var doc = Function.appwrite.database.document.bind ({context: resolve});
 			if (this.db.id) this.db.client.deleteDocument (this.db.name, this.db.table, this.db.id).then (doc, reject);
-			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.appwrite.__query.limit (this.db.limit)]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
+			else this.db.client.listDocuments (this.db.name, this.db.table, [Function.appwrite.__query.limit (Function.query.limit (this.db.limit))]).then (function (db) { for (var i in db.documents) this.db.client.deleteDocument (this.db.name, this.db.table, db.documents [i].$id).then (Function.context, Function.context); }.bind ({db: this.db}), reject);
 			}
 		return new Promise.context (promise.bind ({db: this}));
 		}
@@ -1383,14 +1403,64 @@ Function.help = function () {}
 Function.help.timezone = function (timezone) { timezone = timezone || ""; if (timezone.includes (":")) return timezone; else return timezone.to_split (":", 3); }
 Function.help.host = function () {}
 Function.help.host.check = function (host, check) { return host.endsWith ("/" + check) || host.endsWith ("." + check) || ("#" + host).endsWith ("#" + check); }
-Function.help.taxonomy = function () {}
-Function.help.taxonomy.child = function () {}
-Function.help.taxonomy.child.recursive = function (taxonomy, request, response) { for (var i in taxonomy) if ((taxonomy [i].child = request.db.taxonomy.select ({reference: taxonomy [i].id})).length) Function.help.taxonomy.child.recursive (taxonomy [i].child, request); }
 Function.help.db = function () {}
+Function.help.db.parent_id = function () {}
+Function.help.db.parent_id.recursive = function (collection, base, parent_id) {
+	for (var i in collection) {
+		if (collection [i].reference) {
+			collection [i].parent_id = [collection [i].reference];
+			if (parent_id) parent_id.push (collection [i].reference);
+			var parent = base.select ({id: collection [i].reference});
+			if (parent.length) {
+				Function.help.db.parent_id.recursive (parent, base, collection [i].parent_id);
+				}
+			}
+		}
+	}
 Function.help.db.child = function () {}
-Function.help.db.child.recursive = function (collection, base) { for (var i in collection) if ((collection [i].child = base.select ({reference: collection [i].id})).length) Function.help.db.child.recursive (collection [i].child, base); }
+Function.help.db.child.recursive = function (collection, base) {
+	for (var i in collection) {
+		if ((collection [i].child = base.select ({reference: collection [i].id})).length) {
+			Function.help.db.child.recursive (collection [i].child, base);
+			}
+		}
+	}
 
 Function.current = function (input) { return "./" + input; }
+
+Function.content = function () {}
+Function.content.type = {
+	"content": "content",
+	"content:article": "content",
+	"content:image": "content",
+	"content:photo": "content",
+	"content:audio": "content",
+	"content:sound": "content",
+	"content:music": "content",
+	"content:video": "content",
+	"content:people": "content",
+	"content:game": "content",
+	"page": "page",
+	"page:promo": "page",
+	"page:event": "page",
+	}
+Function.content.slot = {
+	"content": "content", "content index": "content index",
+	"content:article": "content:article", "content:article index": "content:article index",
+	"content:image": "content:image", "content:image index": "content:image index",
+	"content:photo": "content:photo", "content:photo index": "content:photo index",
+	"content:audio": "content:audio", "content:audio index": "content:audio index",
+	"content:sound": "content:sound", "content:sound index": "content:sound index",
+	"content:music": "content:music", "content:music index": "content:music index",
+	"content:video": "content:video", "content:video index": "content:video index",
+	"content:people": "content:people", "content:people index": "content:people index",
+	"content:game": "content:game", "content:game index": "content:game index",
+	"page": "page", "page index": "page index",
+	"page:promo": "page:promo", "page:promo index": "page:promo index",
+	"page:event": "page:event", "page:event index": "page:event index",
+	"tag": "tag", "tag index": "tag index",
+	"category": "category", "category index": "category index",
+	}
 
 Function ["favorite.ico"] = "favicon.ico";
 
@@ -1409,7 +1479,25 @@ Define (Function.path, "separator", function (separator) { if (separator) return
 Define (Function.path, "join", function (... path) { return Function.path.api.engine.join (... path); });
 Define (Function.path, "api", function (engine) { if (engine) return Function.path.api.engine = engine; else return Function.path.api.engine = require ("path"); });
 Define (Function.path.api, "engine", null, {writable: true});
-Define (Function.path, "regex", function (path, regex) { if (regex) { var data = {}, key = []; var regexp = Function.path.regex.__regex (regex, key); var param = regexp.exec (path); if (param) { for (var i = 1; i < param.length; i ++) data [key [i - 1].name] = param [i]; return data; } } });
+Define (Function.path, "regex", function (path, regex) {
+	if (regex) {
+		if (regex.includes ("*")) {
+			var tmp = [], star = path.begin (regex.length - 1), split = star.split ("/");
+			for (var i in split) tmp.push (":" + i);
+			regex = regex.to_param (tmp.join ("/"));
+			return {... Function.path.regex (path, regex), "*": star}
+			}
+		else {
+			var data = {}, key = [];
+			var regexp = Function.path.regex.__regex (regex, key);
+			var param = regexp.exec (path);
+			if (param) {
+				for (var i = 1; i < param.length; i ++) data [key [i - 1].name] = param [i];
+				return data;
+				}
+			}
+		}
+	});
 Define (Function.path.regex, "require", function (regex, match, parse, compile) { if (arguments.length) Function.path.regex.__regex = regex, Function.path.regex.__match = match, Function.path.regex.__parse = parse, Function.path.regex.__compile = compile; else return require ("path-to-regexp"); });
 Define (Function.path.regex, "api", function (engine) { if (engine) return Function.path.regex.api.engine = engine; else return Function.path.regex.api.engine = require ("path-to-regexp"); });
 Define (Function.path.regex.api, "engine", null, {writable: true});
@@ -1551,7 +1639,7 @@ Symbol.library = {
 	path: Function.path, file: Function.file, fs: Function.fs,
 	window: Function.window, document: Function.document,
 	express: Function.express, angular: Function.angular, vue: Function.vue,
-	help: Function.help, current: Function.current,
+	help: Function.help, current: Function.current, content: Function.content,
 	manifest: Function.manifest, robot: Function.robot, sitemap: Function.sitemap, "sitemap.xsl": Function ["sitemap.xsl"],
 	}
 
