@@ -366,6 +366,7 @@ Define (Time, "interval", function (context, second = 1) { return setInterval (c
 Define (Time.interval, "clear", function (context) { return clearInterval (context); });
 
 Function.timeout = function (context) { return setTimeout (context, (Function.timeout.sleep.value * 1000)); }
+Function.timeout.clear = function (context) { return clearTimeout (context); }
 Function.timeout.sleep = function (value) { if (arguments.length) return Function.timeout.sleep.value = value; else return Function.timeout.sleep.value; }
 Function.timeout.sleep.value = 10;
 
@@ -516,11 +517,11 @@ Define (URL.domain, "sort", function (domain) {
 	});
 
 Define (URL.domain, "data", URL.domain.sort ([
-	".com", ".net", ".org", ".info",
-	".io", ".app", ".site", ".blog", ".cloud", ".space", ".ninja",
-	".co",
+	".com", ".net", ".org", ".info", ".co",
+	".io", ".app", ".site", ".blog", ".cloud", ".space", ".pro", ".ninja", ".life", ".live", ".online",
+	".id", ".my", ".cn", ".kr", ".jp",
 	".xxx", ".xyz",
-	".local", ".tmp",
+	".local", ".ng", ".vue", ".tmp",
 	]), {writable: true});
 
 Define (URL, "protocol", {
@@ -692,7 +693,7 @@ JSON.file.database.collection = class {
 				this.data = (this.require = require (this.file)).data;
 				}
 			else {
-				this.stringify = Function.fs.file_read (this.file);
+				this.stringify = Function.file.file_read (this.file);
 				this.data = JSON.parse (this.stringify);
 				}
 			}
@@ -867,9 +868,94 @@ Define (Function, "plugin", function () {});
  * xxx://xxx.xxx.xxx/xxx
  */
 
-Function.mongo = function () {
-	//
+Function.mongo = class {
+	constructor (config) {
+		if (config) this.start (config);
+		}
+	start (config) {
+		if (config) this.config = config;
+		this.url = this.config.url;
+		this ["data:base"] = this.config.db.name;
+		this.client = new Function.mongo.api.engine.MongoClient (this.url);
+		}
+	connect (context) {
+		this.client.connect ().then (function () { context (); console.log ("mongo:connect", true); }).catch (function (error) { console.log ("mongo:connect", error); });
+		}
+	database (db) {
+		return new Function.mongo.db (this, db);
+		}
 	}
+
+Function.mongo.db = class {
+	constructor (mongo, db) {
+		this.mongo = mongo;
+		this.client = this.mongo.client.db (this.name = db);
+		}
+	collection (collection) {
+		return new Function.mongo.db.collection (this.mongo, this, collection);
+		}
+	}
+
+Function.mongo.db.collection = class {
+	constructor (mongo, db, collection) {
+		this.mongo = mongo;
+		this.db = db;
+		this.table = this.db.table [this.collection = collection] || this.collection;
+		this.doc = this.db.client.collection (this.table);
+		this.query = [];
+		}
+	sort () {}
+	limit () {}
+	select (query) {
+		var promise = function (resolve, reject) {
+			this.db.doc.find (query).toArray ().then (Function.mongo.db.doc.select (resolve)).catch (reject);
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	insert (data) {
+		if (Array.isArray (data)) this.data = data.filter (Function.mongo.db.doc.insert.filter.id).map (Function.mongo.db.doc.insert.filter);
+		else this.data = Function.mongo.db.doc.insert.filter (data);
+		var promise = function (resolve, reject) {
+			if (Array.isArray (this.db.data)) this.db.doc.insertMany (this.db.data).then (Function.mongo.db.doc.insert (resolve)).catch (reject);
+			else this.db.doc.insertOne (this.db.data).then (Function.mongo.db.doc.insert (resolve)).catch (reject);
+			}
+		return new Promise.context (promise.bind ({db: this}));
+		}
+	}
+
+Function.mongo.db.document = function () {}
+Function.mongo.db.document.id = function (id) { return new Function.mongo.api.engine.ObjectId (id.padEnd (24, "0")); }
+
+Function.mongo.db.doc = function () {}
+Function.mongo.db.doc.select = function (resolve) {
+	return function (data) {
+		data = data.map (function (data) {
+			data.id = data._id.toString ();
+			data.stamp = data._stamp;
+			return data;
+			})
+		resolve ({data});
+		}
+	}
+Function.mongo.db.doc.insert = function (resolve) {
+	return function (data) {
+		var id;
+		if (data.insertedId) id = data.insertedId.toString ();
+		else if (data.insertedIds) if (id = []) for (var i in data.insertedIds) id.push (data.insertedIds [i].toString ());
+		resolve ({id, count: (data.insertedCount || 1)});
+		}
+	}
+Function.mongo.db.doc.insert.filter = function (data) {
+	if (data.id) data._id = new Function.mongo.db.document.id (data.id);
+	if (data.stamp) data._stamp = {select: data.stamp.select || 0, insert: data.stamp.insert || Date.now (), update: data.stamp.update || 0, delete: data.stamp.delete || 0}
+	else data._stamp = {select: 0, insert: Date.now (), update: 0, delete: 0}
+	data._random = Function.mongo.random (data._random);
+	delete data.id;
+	return data;
+	}
+Function.mongo.db.doc.insert.filter.id = function (data) { return "id" in data; }
+
+Function.mongo.random = function (data) { return data || [Math.random (), 0]; }
 
 Function.mongo.api = function () {
 	return Function.mongo.api.engine = require ("mongodb");
@@ -1268,7 +1354,7 @@ Function.sitemap.xml = function (data, option) {
 			}
 		xml.push ('</urlset>');
 		}
-	return xml.join ("\n");
+	return xml.join ('\n');
 	}
 
 Function ["sitemap.xsl"] = null;
@@ -1278,7 +1364,7 @@ Function.sitemap.xsl = function (key, value) {
 	if ((key = key || {}) === "path:index") return Function ["sitemap.xsl:index"] = value;
 	key.client = key.client || {}
 	key.generator = key.generator || {name: "Newbie Citizen", channel: "NEWBIZEN", url: "https://developer.newbizen.com"}
-	key.generator = key.generator.name || {name: "Newbie Citizen", channel: "NEWBIZEN", url: "https://developer.newbizen.com"}
+	key.generator = key.generator.name ? key.generator : {name: "Newbie Citizen", channel: "NEWBIZEN", url: "https://developer.newbizen.com"}
 	var xsl = ['<?xml version="1.0" encoding="UTF-8"?>'];
 	xsl.push ('<xsl:stylesheet version="2.0" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">');
 	xsl.push ('\t<xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>');
@@ -1347,6 +1433,49 @@ Function.sitemap.last_modified = function (stamp) {
 	var last_modified = [last_modified_date.join ("-"), last_modified_time.join (":")].join ("T");
 	last_modified = [last_modified, last_modified_zone.join (":")].join ("+");
 	return last_modified;
+	}
+
+Function ["open-search.xml"] = function (data) {
+	var xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
+	xml.push ('<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">');
+	xml.push ('\t<ShortName>' + data ["name:short"] + '</ShortName>');
+	xml.push ('\t<LongName>' + data ["name:long"] + '</LongName>');
+	xml.push ('\t<Description>' + data ["description"] + '</Description>');
+	xml.push ('\t<Developer>' + (data ["developer"] || "OpenSearch") + '</Developer>');
+	xml.push ('\t<Image type="image/vnd.microsoft.icon" height="16" width="16">https://' + data ["domain:name"] + '/favicon.ico</Image>');
+	xml.push ('\t<Url type="application/opensearchdescription+xml" rel="self" template="https://' + data ["domain:name"] + '/opensearch.xml"/>');
+	xml.push ('\t<Url type="text/html" rel="results" template="https://' + data ["domain:name"] + '/?search={searchTerms}&amp;page={startPage?}"/>');
+	xml.push ('\t<Url type="application/rss+xml" rel="results" template="https://' + data ["domain:name"] + '/?search={searchTerms}&amp;format=feed&amp;page={startPage?}"/>');
+	xml.push ('\t<Url type="application/json" rel="results" template="https://' + data ["domain:name"] + '/?search={searchTerms}&amp;format=json&amp;page={startPage?}"/>');
+	xml.push ('\t<Query role="example" searchTerms="BBQ"/>');
+	xml.push ('</OpenSearchDescription>');
+	return xml.join ('\n');
+	}
+
+Function ["open-search.xml:description"] = function (data) {
+	var xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
+	xml.push ('<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">');
+	xml.push ('\t<ShortName>' + data ["name:short"] + '</ShortName>');
+	xml.push ('\t<LongName>' + data ["name:long"] + '</LongName>');
+	xml.push ('\t<Contact>' + data ["contact"] + '</Contact>');
+	xml.push ('\t<Developer>' + (data ["developer"] || "OpenSearch") + '</Developer>');
+	xml.push ('\t<Language>' + (data ["language"] || "en") + '</Language>');
+	xml.push ('\t<Tags>' + (data ["tag"] || "blog") + '</Tags>');
+	xml.push ('\t<AdultContent>' + (data ["adult"] || "false") + '</AdultContent>');
+	xml.push ('\t<Description>' + data ["description"] + '</Description>');
+	xml.push ('\t<Url type="application/atom+xml" template="https://' + data ["domain:name"] + '/?search={searchTerms}&amp;feed=atom"/>');
+	xml.push ('\t<Url type="rss+xml" template="https://' + data ["domain:name"] + '/?search={searchTerms}&amp;feed=rss2"/>');
+	xml.push ('\t<Url type="text/html" template="https://' + data ["domain:name"] + '/?search={searchTerms}" method="GET"/>');
+	xml.push ('\t<Url type="application/opensearchdescription+xml" rel="self" template="https://' + data ["domain:name"] + '/osd.xml"/>');
+	xml.push ('\t<Image height="16" width="16" type="image/vnd.microsoft.icon">https://' + data ["domain:name"] + '/__asset/image/favorite/16x16.png</Image>');
+	xml.push ('\t<Image height="64" width="64" type="image/png">https://' + data ["domain:name"] + '/__asset/image/favorite/64x64.png</Image>');
+	xml.push ('\t<Query role="example" searchTerms="photography"/>');
+	xml.push ('\t<SyndicationRight>open</SyndicationRight>');
+	xml.push ('\t<OutputEncoding>UTF-8</OutputEncoding>');
+	xml.push ('\t<InputEncoding>UTF-8</InputEncoding>');
+	xml.push ('\t<moz:SearchForm>https://' + data ["domain:name"] + '</moz:SearchForm>');
+	xml.push ('</OpenSearchDescription>');
+	return xml.join ('\n');
 	}
 
 /**
@@ -1443,8 +1572,11 @@ Function.content.type = {
 	"page": "page",
 	"page:promo": "page",
 	"page:event": "page",
+	"product": "product",
+	"shop": "shop",
 	}
 Function.content.slot = {
+	"index": "index",
 	"content": "content", "content index": "content index",
 	"content:article": "content:article", "content:article index": "content:article index",
 	"content:image": "content:image", "content:image index": "content:image index",
@@ -1458,6 +1590,8 @@ Function.content.slot = {
 	"page": "page", "page index": "page index",
 	"page:promo": "page:promo", "page:promo index": "page:promo index",
 	"page:event": "page:event", "page:event index": "page:event index",
+	"product": "product", "product:item": "product:item", "product index": "product index",
+	"shop": "shop", "shop:item": "shop:item", "shop index": "shop index",
 	"tag": "tag", "tag index": "tag index",
 	"category": "category", "category index": "category index",
 	}
@@ -1482,10 +1616,12 @@ Define (Function.path.api, "engine", null, {writable: true});
 Define (Function.path, "regex", function (path, regex) {
 	if (regex) {
 		if (regex.includes ("*")) {
-			var tmp = [], star = path.begin (regex.length - 1), split = star.split ("/");
-			for (var i in split) tmp.push (":" + i);
-			regex = regex.to_param (tmp.join ("/"));
-			return {... Function.path.regex (path, regex), "*": star}
+			if (path.startsWith (regex.before ("*"))) {
+				var tmp = [], star = path.begin (regex.length - 1), split = star.split ("/");
+				for (var i in split) tmp.push (":" + i);
+				regex = regex.to_param (tmp.join ("/"));
+				return {... Function.path.regex (path, regex), "*": star}
+				}
 			}
 		else {
 			var data = {}, key = [];
@@ -1502,11 +1638,11 @@ Define (Function.path.regex, "require", function (regex, match, parse, compile) 
 Define (Function.path.regex, "api", function (engine) { if (engine) return Function.path.regex.api.engine = engine; else return Function.path.regex.api.engine = require ("path-to-regexp"); });
 Define (Function.path.regex.api, "engine", null, {writable: true});
 
-Define (Function, "fs", function () {});
-Define (Function.fs, "api", function (engine) { if (engine) return Function.fs.api.engine = engine; else return Function.fs.api.engine = require ("fs"); });
-Define (Function.fs.api, "engine", null, {writable: true});
-
 Define (Function, "file", function () {});
+Define (Function.file, "system", function () {});
+Define (Function.file.system, "api", function (engine) { if (engine) return Function.file.system.api.engine = engine; else return Function.file.system.api.engine = require ("fs"); });
+Define (Function.file.system.api, "engine", null, {writable: true});
+
 Define (Function.file, "extension", {
 	html: ".html",
 	css: ".css",
@@ -1634,13 +1770,14 @@ Symbol.library = {
 	data: Function.data, hash: Function.hash, xml: Function.xml, serialize: Function.serialize, json: JSON,
 	dom: Function.dom,
 	char: String.char, is_boolean: Object.is_boolean, is_object: Object.is_object, is_array: Object.is_array, is_string: Object.is_string, is_number: Object.is_number, is_nan: Object.is_nan, is_integer: Object.is_integer, is_finite: Object.is_finite, is_float: Object.is_float, is_function: Object.is_function, is_date: Object.is_date, is_regex: Object.is_regex, is_null: Object.is_null, is_set: Object.is_set, is_define: Object.is_define, un_define: Object.un_define, un_set: Object.un_set,
-	plugin: Function.plugin, api: Function.api, firebase: Function.firebase, appwrite: Function.appwrite,
+	plugin: Function.plugin, api: Function.api, mongo: Function.mongo, firebase: Function.firebase, appwrite: Function.appwrite,
 	ip: Function.ip, geo: Function.geo,
-	path: Function.path, file: Function.file, fs: Function.fs,
+	path: Function.path, file: Function.file, dir: Function.dir,
 	window: Function.window, document: Function.document,
 	express: Function.express, angular: Function.angular, vue: Function.vue,
 	help: Function.help, current: Function.current, content: Function.content,
 	manifest: Function.manifest, robot: Function.robot, sitemap: Function.sitemap, "sitemap.xsl": Function ["sitemap.xsl"],
+	"open-search.xml": Function ["open-search.xml"], "open-search.xml:description": Function ["open-search.xml:description"],
 	}
 
 /**
