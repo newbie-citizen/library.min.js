@@ -281,8 +281,9 @@ Define (Date, "time", class {
 		return this;
 		}
 	timezone (timezone) {
+		this.tz = timezone;
 		if (typeof timezone === "string") {
-			var timezone = Function.timezone.data.select ({identifier: timezone});
+			timezone = Function.timezone.data.select ({identifier: timezone});
 			if (timezone.length) timezone = timezone.begin ().canonical;
 			else timezone = {}
 			}
@@ -292,7 +293,8 @@ Define (Date, "time", class {
 		this.date = new Date.time.get (this.current);
 		return this;
 		}
-	format (format) {
+	format (format, stamp) {
+		if (stamp) return new Date.time (stamp).timezone (this.tz).format (format);
 		var to_format = this.help.format ();
 		var date = [];
 		var split = format.split ("");
@@ -314,7 +316,7 @@ Define (Date, "time", class {
 Define (Date.time, "get", class {
 	constructor (date) { this.date = date; }
 	year () { return (this.date.getUTCFullYear () + 0).toString (); }
-	month (type) { if (type === "name") return Date.time.month.name [this.week ()]; else return (this.date.getUTCMonth () + Date.time.month.log).toString ().padStart (2, "0"); }
+	month (type) { if (type === "name") return Date.time.month.name [this.month ()]; else return (this.date.getUTCMonth () + Date.time.month.log).toString ().padStart (2, "0"); }
 	day (type) { if (type === "name") return Date.time.day.name [this.week ()]; else return (this.date.getUTCDate () + 0).toString ().padStart (2, "0"); }
 	hour (type) { if (type === "day-night") { var hour = this.date.getUTCHours () - 12; if (hour === 0) hour = 12; return hour.toString ().padStart (2, "0"); } else return (this.date.getUTCHours () + 0).toString ().padStart (2, "0"); }
 	minute () { return (this.date.getUTCMinutes () + 0).toString ().padStart (2, "0"); }
@@ -355,7 +357,7 @@ Define (Date.time, "expire", function (stamp, expire) {
 	});
 
 Define (Date.time, "month", {log: 1, name: {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}});
-Define (Date.time, "day", {log: 0, name: {"01": "Monday", "02": "Tuesday", "03": "Wednesday", "04": "Thursday", "05": "Friday", "06": "Saturday", "07": "Sunday"}});
+Define (Date.time, "day", {log: 0, name: {"00": "Sunday", "01": "Monday", "02": "Tuesday", "03": "Wednesday", "04": "Thursday", "05": "Friday", "06": "Saturday"}});
 
 function Time () { return Date.now (); }
 Define (Time, "stamp", function () { return Date.now (); });
@@ -1558,23 +1560,98 @@ Function.help.db.child.recursive = function (collection, base) {
 Function.current = function (input) { return "./" + input; }
 
 Function.content = function () {}
-Function.content.type = {
-	"content": "content",
-	"content:article": "content",
-	"content:image": "content",
-	"content:photo": "content",
-	"content:audio": "content",
-	"content:sound": "content",
-	"content:music": "content",
-	"content:video": "content",
-	"content:people": "content",
-	"content:game": "content",
-	"page": "page",
-	"page:promo": "page",
-	"page:event": "page",
-	"product": "product",
-	"shop": "shop",
+
+Function.content.empty = function () { return '\t\t\tEmpty'; }
+
+Function.content.html = function (content, type) {
+	var html = [];
+	if (Array.isArray (content)) {
+		for (var i in content) {
+			html.push ('\t\t\t<div id="" data-id="' + content [i].id + '">');
+			html.push ('\t\t\t\t<div id="the:date-time">');
+			html.push ('\t\t\t\t\t' + content [i].date_format);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:author">');
+			html.push ('\t\t\t\t\t' + content [i].author);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:title">');
+			html.push ('\t\t\t\t\t' + content [i].title);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:sub_title">');
+			html.push ('\t\t\t\t\t' + content [i].sub_title);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:head">');
+			html.push ('\t\t\t\t\t' + content [i].head);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:value">');
+			html.push ('\t\t\t\t\t' + content [i].value);
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:tag">');
+			html.push ('\t\t\t\t\t<ul>');
+			for (var x in content [i].tag) html.push ('\t\t\t\t\t\t<li>' + content [i].tag [x] + '</li>');
+			html.push ('\t\t\t\t\t</ul>');
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t\t<div id="the:category">');
+			html.push ('\t\t\t\t\t<ul>');
+			for (var x in content [i].category) html.push ('\t\t\t\t\t\t<li>' + content [i].category [x] + '</li>');
+			html.push ('\t\t\t\t\t</ul>');
+			html.push ('\t\t\t\t</div>');
+			html.push ('\t\t\t</div>');
+			}
+		}
+	else {
+		html.push ('\t\t\t<div id="" data-id="' + content.id + '">');
+		html.push ('\t\t\t\t<div id="the:date-time">');
+		html.push ('\t\t\t\t\t' + content.date_format);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:author">');
+		html.push ('\t\t\t\t\t' + content.author);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:title">');
+		html.push ('\t\t\t\t\t' + content.title);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:sub_title">');
+		html.push ('\t\t\t\t\t' + content.sub_title);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:head">');
+		html.push ('\t\t\t\t\t' + content.head);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:value">');
+		html.push ('\t\t\t\t\t' + content.value);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:tag">');
+		html.push ('\t\t\t\t\t<ul>');
+		for (var x in content.tag) html.push ('\t\t\t\t\t\t<li>' + content.tag [x] + '</li>');
+		html.push ('\t\t\t\t\t</ul>');
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:category">');
+		html.push ('\t\t\t\t\t<ul>');
+		for (var x in content.category) html.push ('\t\t\t\t\t\t<li>' + content.category [x] + '</li>');
+		html.push ('\t\t\t\t\t</ul>');
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t</div>');
+		}
+	return html.join ('\n');
 	}
+
+Function.content.type_of = {
+	"content": "content", "content index": "content",
+	"content:article": "content", "content:article index": "content:article",
+	"content:image": "content", "content:image index": "content:image",
+	"content:photo": "content", "content:photo index": "content:photo",
+	"content:audio": "content", "content:audio index": "content:audio",
+	"content:sound": "content", "content:sound index": "content:sound",
+	"content:music": "content", "content:music index": "content:music",
+	"content:video": "content", "content:video index": "content:video",
+	"content:game": "content", "content:game index": "content:game",
+	"content:people": "content", "content:people index": "content:people",
+	"page": "page", "page index": "page",
+	"page:promo": "page", "page:promo index": "page:promo",
+	"page:event": "page", "page:event index": "page:event",
+	"product": "product", "product index": "product",
+	"shop": "shop", "shop index": "shop",
+	}
+
 Function.content.slot = {
 	"index": "index",
 	"content": "content", "content index": "content index",
@@ -1585,8 +1662,8 @@ Function.content.slot = {
 	"content:sound": "content:sound", "content:sound index": "content:sound index",
 	"content:music": "content:music", "content:music index": "content:music index",
 	"content:video": "content:video", "content:video index": "content:video index",
-	"content:people": "content:people", "content:people index": "content:people index",
 	"content:game": "content:game", "content:game index": "content:game index",
+	"content:people": "content:people", "content:people index": "content:people index",
 	"page": "page", "page index": "page index",
 	"page:promo": "page:promo", "page:promo index": "page:promo index",
 	"page:event": "page:event", "page:event index": "page:event index",
