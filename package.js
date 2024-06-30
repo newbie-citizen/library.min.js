@@ -297,7 +297,7 @@ Define (Date, "time", class {
 		if (stamp) return new Date.time (stamp).timezone (this.tz).format (format);
 		var to_format = this.help.format ();
 		var date = [];
-		var split = format.split ("");
+		var split = (Date.format [format || "default"] || format).split ("");
 		for (var i in split) date.push (to_format [split [i]] || split [i]);
 		return date.join ("");
 		}
@@ -359,6 +359,11 @@ Define (Date.time, "expire", function (stamp, expire) {
 Define (Date.time, "month", {log: 1, name: {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}});
 Define (Date.time, "day", {log: 0, name: {"00": "Sunday", "01": "Monday", "02": "Tuesday", "03": "Wednesday", "04": "Thursday", "05": "Friday", "06": "Saturday"}});
 
+Define (Date, "format", {
+	"default": "L, F D, Y - H:I A",
+	"full": "L, F D, Y - H:I:S A",
+	});
+
 function Time () { return Date.now (); }
 Define (Time, "stamp", function () { return Date.now (); });
 Define (Time, "sleep", function (context, second = 1) { return setTimeout (context, (second * 1000)); });
@@ -414,7 +419,8 @@ Define (URL, "format", function (url, option) {
 	option = Function.option (option);
 	if (option.protocol) url = [option.protocol, "://", url];
 	if (option.query) url = [url, URL.query (option.query)].join ("?");
-	return url.join ("");
+	if (Array.isArray (url)) return url.join ("");
+	else return url;
 	});
 
 Define (URL, "query", function (query) {
@@ -1491,7 +1497,7 @@ Function ["open-search.xml:description"] = function (data) {
  */
 
 /**
- * xxx
+ * content
  *
  * title
  * description
@@ -1499,6 +1505,91 @@ Function ["open-search.xml:description"] = function (data) {
  *
  * xxx://xxx.xxx.xxx/xxx
  */
+
+Function.content = function () {}
+
+Function.content.empty = function () { return '\t\t\tEmpty'; }
+
+Function.content.html = function (content, type) {
+	var html = [];
+	if (Array.isArray (content)) {
+		for (var i in content) {
+			html.push (Function.content.html (content [i]));
+			}
+		}
+	else {
+		html.push ('\t\t\t<div id="" data-id="' + content.id + '">');
+		html.push ('\t\t\t\t<div id="the:date-time">');
+		html.push ('\t\t\t\t\t' + content.date_format);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:author">');
+		html.push ('\t\t\t\t\t' + content.author);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:title">');
+		html.push ('\t\t\t\t\t' + content.title);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:sub_title">');
+		html.push ('\t\t\t\t\t' + content.sub_title);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:head">');
+		html.push ('\t\t\t\t\t' + content.head);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:body">');
+		html.push ('\t\t\t\t\t' + content.value);
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:tag">');
+		html.push ('\t\t\t\t\t<ul>');
+		for (var x in content.tag) html.push ('\t\t\t\t\t\t<li>' + content.tag [x] + '</li>');
+		html.push ('\t\t\t\t\t</ul>');
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t\t<div id="the:category">');
+		html.push ('\t\t\t\t\t<ul>');
+		for (var x in content.category) html.push ('\t\t\t\t\t\t<li>' + content.category [x] + '</li>');
+		html.push ('\t\t\t\t\t</ul>');
+		html.push ('\t\t\t\t</div>');
+		html.push ('\t\t\t</div>');
+		}
+	return html.join ('\n');
+	}
+
+Function.content.type_of = {
+	"content": "content", "content index": ["content", "content:article", "content:image", "content:image", "content:photo", "content:audio", "content:sound", "content:music", "content:video", "content:game", "content:people"],
+	"content:article": "content", "content:article index": "content:article",
+	"content:image": "content", "content:image index": "content:image",
+	"content:photo": "content", "content:photo index": "content:photo",
+	"content:audio": "content", "content:audio index": "content:audio",
+	"content:sound": "content", "content:sound index": "content:sound",
+	"content:music": "content", "content:music index": "content:music",
+	"content:video": "content", "content:video index": "content:video",
+	"content:game": "content", "content:game index": "content:game",
+	"content:people": "content", "content:people index": "content:people",
+	"page": "page", "page index": ["page", "page:promo", "page:event"],
+	"page:promo": "page", "page:promo index": "page:promo",
+	"page:event": "page", "page:event index": "page:event",
+	"product": "product", "product index": "product",
+	"shop": "shop", "shop index": "shop",
+	}
+
+Function.content.slot = {
+	"index": "index",
+	"content": "content", "content index": "content index",
+	"content:article": "content:article", "content:article index": "content:article index",
+	"content:image": "content:image", "content:image index": "content:image index",
+	"content:photo": "content:photo", "content:photo index": "content:photo index",
+	"content:audio": "content:audio", "content:audio index": "content:audio index",
+	"content:sound": "content:sound", "content:sound index": "content:sound index",
+	"content:music": "content:music", "content:music index": "content:music index",
+	"content:video": "content:video", "content:video index": "content:video index",
+	"content:game": "content:game", "content:game index": "content:game index",
+	"content:people": "content:people", "content:people index": "content:people index",
+	"page": "page", "page index": "page index",
+	"page:promo": "page:promo", "page:promo index": "page:promo index",
+	"page:event": "page:event", "page:event index": "page:event index",
+	"product": "product", "product:item": "product:item", "product index": "product index",
+	"shop": "shop", "shop:item": "shop:item", "shop index": "shop index",
+	"tag": "tag", "tag index": "tag index",
+	"category": "category", "category index": "category index",
+	}
 
 /**
  * xxx
@@ -1558,120 +1649,6 @@ Function.help.db.child.recursive = function (collection, base) {
 	}
 
 Function.current = function (input) { return "./" + input; }
-
-Function.content = function () {}
-
-Function.content.empty = function () { return '\t\t\tEmpty'; }
-
-Function.content.html = function (content, type) {
-	var html = [];
-	if (Array.isArray (content)) {
-		for (var i in content) {
-			html.push ('\t\t\t<div id="" data-id="' + content [i].id + '">');
-			html.push ('\t\t\t\t<div id="the:date-time">');
-			html.push ('\t\t\t\t\t' + content [i].date_format);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:author">');
-			html.push ('\t\t\t\t\t' + content [i].author);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:title">');
-			html.push ('\t\t\t\t\t' + content [i].title);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:sub_title">');
-			html.push ('\t\t\t\t\t' + content [i].sub_title);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:head">');
-			html.push ('\t\t\t\t\t' + content [i].head);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:value">');
-			html.push ('\t\t\t\t\t' + content [i].value);
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:tag">');
-			html.push ('\t\t\t\t\t<ul>');
-			for (var x in content [i].tag) html.push ('\t\t\t\t\t\t<li>' + content [i].tag [x] + '</li>');
-			html.push ('\t\t\t\t\t</ul>');
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t\t<div id="the:category">');
-			html.push ('\t\t\t\t\t<ul>');
-			for (var x in content [i].category) html.push ('\t\t\t\t\t\t<li>' + content [i].category [x] + '</li>');
-			html.push ('\t\t\t\t\t</ul>');
-			html.push ('\t\t\t\t</div>');
-			html.push ('\t\t\t</div>');
-			}
-		}
-	else {
-		html.push ('\t\t\t<div id="" data-id="' + content.id + '">');
-		html.push ('\t\t\t\t<div id="the:date-time">');
-		html.push ('\t\t\t\t\t' + content.date_format);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:author">');
-		html.push ('\t\t\t\t\t' + content.author);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:title">');
-		html.push ('\t\t\t\t\t' + content.title);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:sub_title">');
-		html.push ('\t\t\t\t\t' + content.sub_title);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:head">');
-		html.push ('\t\t\t\t\t' + content.head);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:value">');
-		html.push ('\t\t\t\t\t' + content.value);
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:tag">');
-		html.push ('\t\t\t\t\t<ul>');
-		for (var x in content.tag) html.push ('\t\t\t\t\t\t<li>' + content.tag [x] + '</li>');
-		html.push ('\t\t\t\t\t</ul>');
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t\t<div id="the:category">');
-		html.push ('\t\t\t\t\t<ul>');
-		for (var x in content.category) html.push ('\t\t\t\t\t\t<li>' + content.category [x] + '</li>');
-		html.push ('\t\t\t\t\t</ul>');
-		html.push ('\t\t\t\t</div>');
-		html.push ('\t\t\t</div>');
-		}
-	return html.join ('\n');
-	}
-
-Function.content.type_of = {
-	"content": "content", "content index": "content",
-	"content:article": "content", "content:article index": "content:article",
-	"content:image": "content", "content:image index": "content:image",
-	"content:photo": "content", "content:photo index": "content:photo",
-	"content:audio": "content", "content:audio index": "content:audio",
-	"content:sound": "content", "content:sound index": "content:sound",
-	"content:music": "content", "content:music index": "content:music",
-	"content:video": "content", "content:video index": "content:video",
-	"content:game": "content", "content:game index": "content:game",
-	"content:people": "content", "content:people index": "content:people",
-	"page": "page", "page index": "page",
-	"page:promo": "page", "page:promo index": "page:promo",
-	"page:event": "page", "page:event index": "page:event",
-	"product": "product", "product index": "product",
-	"shop": "shop", "shop index": "shop",
-	}
-
-Function.content.slot = {
-	"index": "index",
-	"content": "content", "content index": "content index",
-	"content:article": "content:article", "content:article index": "content:article index",
-	"content:image": "content:image", "content:image index": "content:image index",
-	"content:photo": "content:photo", "content:photo index": "content:photo index",
-	"content:audio": "content:audio", "content:audio index": "content:audio index",
-	"content:sound": "content:sound", "content:sound index": "content:sound index",
-	"content:music": "content:music", "content:music index": "content:music index",
-	"content:video": "content:video", "content:video index": "content:video index",
-	"content:game": "content:game", "content:game index": "content:game index",
-	"content:people": "content:people", "content:people index": "content:people index",
-	"page": "page", "page index": "page index",
-	"page:promo": "page:promo", "page:promo index": "page:promo index",
-	"page:event": "page:event", "page:event index": "page:event index",
-	"product": "product", "product:item": "product:item", "product index": "product index",
-	"shop": "shop", "shop:item": "shop:item", "shop index": "shop index",
-	"tag": "tag", "tag index": "tag index",
-	"category": "category", "category index": "category index",
-	}
 
 Function ["favorite.ico"] = "favicon.ico";
 
